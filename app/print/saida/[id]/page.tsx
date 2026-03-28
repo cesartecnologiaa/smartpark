@@ -17,17 +17,15 @@ const vehicleLabel = (type: ParkingTicket['vehicleType']) =>
     ? 'Moto'
     : 'Carro';
 
-const RawbtToolbar = ({ onPrint, onShare }: { onPrint: () => void; onShare: () => void }) => (
+const RawbtToolbar = ({ onPrint, onShare, canShare }: { onPrint: () => void; onShare: () => void; canShare: boolean }) => (
   <div className="rawbt-toolbar">
     <div>
       <strong>Modo Android / RAWBT</strong>
-      <p>Toque em imprimir para abrir o serviço de impressão do Android.</p>
+      <p>Use imprimir para enviar o cupom à bobina térmica. Se preferir, compartilhe o link do cupom com o RAWBT.</p>
     </div>
     <div className="rawbt-actions">
       <button type="button" onClick={onPrint}>Imprimir</button>
-      {typeof navigator !== 'undefined' && typeof navigator.share === 'function' ? (
-        <button type="button" onClick={onShare}>Compartilhar</button>
-      ) : null}
+      {canShare ? <button type="button" onClick={onShare}>Compartilhar</button> : null}
     </div>
   </div>
 );
@@ -40,20 +38,28 @@ export default function PrintSaidaPage({ params }: { params: { id: string } }) {
   const [ticket, setTicket] = useState<ParkingTicket | null>(null);
   const [settings, setSettings] = useState<EstablishmentSettings | null>(null);
 
-  async function handleShare() {
-    if (typeof window === 'undefined' || !window.navigator.share) return;
 
-    try {
-      await window.navigator.share({
-        title: settings?.name || 'SmartPark',
-        text: 'Abrir cupom para impressão no RAWBT.',
-        url: window.location.href,
-      });
-    } catch {}
-  }
+  const canShare = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent || '') && typeof navigator.share === 'function';
 
   function handlePrintClick() {
     window.print();
+  }
+
+  async function handleShareClick() {
+    if (!canShare) return;
+
+    try {
+      await navigator.share({
+        title: 'Cupom SmartPark',
+        text: 'Abrir cupom SmartPark no RAWBT',
+        url: window.location.href,
+      });
+    } catch (error) {
+      const shareError = error as { name?: string } | undefined;
+      if (shareError?.name !== 'AbortError') {
+        handlePrintClick();
+      }
+    }
   }
 
   useEffect(() => {
@@ -88,14 +94,14 @@ export default function PrintSaidaPage({ params }: { params: { id: string } }) {
   const styles = useMemo(
     () => ({
       pageWidth: is58 ? '58mm' : '80mm',
-      padding: is58 ? '3mm 2.5mm 2.5mm' : '4mm 3.5mm 3mm',
-      companyFont: is58 ? '4.3mm' : '5.6mm',
-      companySub: is58 ? '2.35mm' : '2.9mm',
-      metaFont: is58 ? '2.2mm' : '2.8mm',
-      subtitle: is58 ? '3.5mm' : '4.3mm',
-      rowFont: is58 ? '3.3mm' : '4.3mm',
-      footerFont: is58 ? '2.2mm' : '2.6mm',
-      cutHeight: is58 ? '10mm' : '14mm',
+      padding: is58 ? '1.4mm 1.15mm 1.5mm' : '4mm 3.5mm 3mm',
+      companyFont: is58 ? '3.45mm' : '5.6mm',
+      companySub: is58 ? '1.85mm' : '2.9mm',
+      metaFont: is58 ? '1.72mm' : '2.8mm',
+      subtitle: is58 ? '2.75mm' : '4.3mm',
+      rowFont: is58 ? '2.32mm' : '4.3mm',
+      footerFont: is58 ? '1.68mm' : '2.6mm',
+      cutHeight: is58 ? '6mm' : '14mm',
     }),
     [is58]
   );
@@ -103,7 +109,7 @@ export default function PrintSaidaPage({ params }: { params: { id: string } }) {
   if (!ticket) {
     return (
       <>
-        {printMode === 'rawbt' ? <RawbtToolbar onPrint={handlePrintClick} onShare={handleShare} /> : null}
+        {printMode === 'rawbt' ? <RawbtToolbar onPrint={handlePrintClick} onShare={handleShareClick} canShare={canShare} /> : null}
         <div className="print-ticket-page">
         <div className="print-ticket">Carregando...</div>
       </div>
@@ -113,7 +119,7 @@ export default function PrintSaidaPage({ params }: { params: { id: string } }) {
 
   return (
     <>
-      {printMode === 'rawbt' ? <RawbtToolbar onPrint={handlePrintClick} onShare={handleShare} /> : null}
+      {printMode === 'rawbt' ? <RawbtToolbar onPrint={handlePrintClick} onShare={handleShareClick} canShare={canShare} /> : null}
       <div className="print-ticket-page">
         <div className="print-ticket">
           <div className="ticket-header">
@@ -197,8 +203,8 @@ export default function PrintSaidaPage({ params }: { params: { id: string } }) {
         .print-ticket-page {
           display: flex;
           justify-content: center;
-          padding: 12px;
-          background: #f3f4f6;
+          padding: 0;
+          background: #eef2f7;
           min-height: 100vh;
         }
 
@@ -209,12 +215,12 @@ export default function PrintSaidaPage({ params }: { params: { id: string } }) {
           padding: ${styles.padding};
           box-sizing: border-box;
           font-family: Arial, Helvetica, sans-serif;
-          box-shadow: 0 0 0 1px #e5e7eb, 0 12px 30px rgba(15, 23, 42, 0.1);
+          box-shadow: ${is58 ? 'none' : '0 0 0 1px #e5e7eb, 0 8px 20px rgba(15, 23, 42, 0.08)'};
         }
 
         .ticket-header {
           text-align: center;
-          margin-bottom: 3mm;
+          margin-bottom: 2.2mm;
         }
 
         .ticket-company {
@@ -264,8 +270,8 @@ export default function PrintSaidaPage({ params }: { params: { id: string } }) {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
-          gap: 3mm;
-          margin: 1.6mm 0;
+          gap: 2mm;
+          margin: 1.2mm 0;
           font-size: ${styles.rowFont};
           line-height: 1.35;
         }
@@ -287,7 +293,7 @@ export default function PrintSaidaPage({ params }: { params: { id: string } }) {
           line-height: 1.2;
           color: #000;
           font-weight: 500;
-          margin-top: 1.8mm;
+          margin-top: 1.2mm;
         }
 
         .ticket-footer p {
@@ -303,7 +309,7 @@ export default function PrintSaidaPage({ params }: { params: { id: string } }) {
           justify-content: space-between;
           gap: 12px;
           align-items: center;
-          padding: 12px 14px;
+          padding: 10px 12px;
           background: #e2e8f0;
           border-bottom: 1px solid #cbd5e1;
           font-family: Arial, Helvetica, sans-serif;
@@ -331,14 +337,54 @@ export default function PrintSaidaPage({ params }: { params: { id: string } }) {
         .rawbt-actions button {
           appearance: none;
           border: 0;
-          border-radius: 999px;
+          border-radius: 10px;
           background: #0f172a;
           color: #fff;
-          padding: 10px 14px;
+          padding: 11px 14px;
           font-size: 13px;
           font-weight: 600;
         }
 
+
+        .ticket-header,
+        .ticket-dashed,
+        .ticket-footer,
+        .ticket-row,
+        .ticket-qr-wrap {
+          width: 100%;
+          box-sizing: border-box;
+        }
+
+        .ticket-row-label {
+          flex: 0 0 auto;
+          max-width: 40%;
+        }
+
+        .ticket-row-value {
+          flex: 1 1 auto;
+          word-break: break-word;
+        }
+
+        @media (max-width: 640px) {
+          .print-ticket-page {
+            padding: 0;
+            background: #fff;
+          }
+
+          .print-ticket {
+            width: ${styles.pageWidth};
+            min-width: ${styles.pageWidth};
+            max-width: ${styles.pageWidth};
+            box-shadow: none;
+            margin: 0 auto;
+          }
+
+          .rawbt-toolbar {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+          }
+        }
 
         @media print {
           .rawbt-toolbar {
@@ -371,7 +417,11 @@ export default function PrintSaidaPage({ params }: { params: { id: string } }) {
           }
 
           .print-ticket {
+            width: ${styles.pageWidth} !important;
+            min-width: ${styles.pageWidth};
+            max-width: ${styles.pageWidth};
             box-shadow: none;
+            margin: 0;
           }
         }
       `}</style>
