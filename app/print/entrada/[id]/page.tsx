@@ -18,12 +18,45 @@ const vehicleLabel = (type: ParkingTicket['vehicleType']) =>
     ? 'Moto'
     : 'Carro';
 
+const RawbtToolbar = ({ onPrint, onShare }: { onPrint: () => void; onShare: () => void }) => (
+  <div className="rawbt-toolbar">
+    <div>
+      <strong>Modo Android / RAWBT</strong>
+      <p>Toque em imprimir para abrir o serviço de impressão do Android.</p>
+    </div>
+    <div className="rawbt-actions">
+      <button type="button" onClick={onPrint}>Imprimir</button>
+      {typeof navigator !== 'undefined' && navigator.share ? (
+        <button type="button" onClick={onShare}>Compartilhar</button>
+      ) : null}
+    </div>
+  </div>
+);
+
 export default function PrintEntradaPage({ params }: { params: { id: string } }) {
   const searchParams = useSearchParams();
   const tenantId = searchParams.get('tenant');
+  const printMode = searchParams.get('printMode');
+  const autoPrint = searchParams.get('autoPrint') !== '0';
   const [ticket, setTicket] = useState<ParkingTicket | null>(null);
   const [settings, setSettings] = useState<EstablishmentSettings | null>(null);
   const [qr, setQr] = useState('');
+
+  async function handleShare() {
+    if (typeof window === 'undefined' || !window.navigator.share) return;
+
+    try {
+      await window.navigator.share({
+        title: settings?.name || 'SmartPark',
+        text: 'Abrir cupom para impressão no RAWBT.',
+        url: window.location.href,
+      });
+    } catch {}
+  }
+
+  function handlePrintClick() {
+    window.print();
+  }
 
   useEffect(() => {
     async function load() {
@@ -59,12 +92,14 @@ export default function PrintEntradaPage({ params }: { params: { id: string } })
         setSettings(settingsSnap.data() as EstablishmentSettings);
       }
 
-      setTimeout(() => window.print(), 350);
-      window.onafterprint = () => window.close();
+      if (autoPrint) {
+        setTimeout(() => window.print(), 350);
+        window.onafterprint = () => window.close();
+      }
     }
 
     load();
-  }, [params.id, tenantId]);
+  }, [autoPrint, params.id, tenantId]);
 
   const is58 = (settings?.printerWidth || '80mm') === '58mm';
 
@@ -88,14 +123,18 @@ export default function PrintEntradaPage({ params }: { params: { id: string } })
 
   if (!ticket) {
     return (
-      <div className="print-ticket-page">
+      <>
+        {printMode === 'rawbt' ? <RawbtToolbar onPrint={handlePrintClick} onShare={handleShare} /> : null}
+        <div className="print-ticket-page">
         <div className="print-ticket">Carregando...</div>
       </div>
+      </>
     );
   }
 
   return (
     <>
+      {printMode === 'rawbt' ? <RawbtToolbar onPrint={handlePrintClick} onShare={handleShare} /> : null}
       <div className="print-ticket-page">
         <div className="print-ticket">
           <div className="ticket-header">
@@ -290,7 +329,53 @@ export default function PrintEntradaPage({ params }: { params: { id: string } })
           height: ${styles.cutHeight};
         }
 
+        .rawbt-toolbar {
+          display: flex;
+          justify-content: space-between;
+          gap: 12px;
+          align-items: center;
+          padding: 12px 14px;
+          background: #e2e8f0;
+          border-bottom: 1px solid #cbd5e1;
+          font-family: Arial, Helvetica, sans-serif;
+        }
+
+        .rawbt-toolbar strong {
+          display: block;
+          color: #0f172a;
+          font-size: 14px;
+        }
+
+        .rawbt-toolbar p {
+          margin: 4px 0 0;
+          color: #475569;
+          font-size: 12px;
+        }
+
+        .rawbt-actions {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: flex-end;
+          gap: 8px;
+        }
+
+        .rawbt-actions button {
+          appearance: none;
+          border: 0;
+          border-radius: 999px;
+          background: #0f172a;
+          color: #fff;
+          padding: 10px 14px;
+          font-size: 13px;
+          font-weight: 600;
+        }
+
+
         @media print {
+          .rawbt-toolbar {
+            display: none;
+          }
+
           @page {
             size: ${styles.pageWidth} auto;
             margin: 0;

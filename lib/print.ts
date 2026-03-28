@@ -1,12 +1,39 @@
+function readStoredPrintMethod() {
+  if (typeof window === 'undefined') return 'browser';
+  return window.localStorage.getItem('smartpark:printMethod') || 'browser';
+}
+
+function isAndroidDevice() {
+  if (typeof window === 'undefined') return false;
+  return /Android/i.test(window.navigator.userAgent || '');
+}
+
 export function openPrintPage(path: string) {
   if (typeof window === 'undefined') return;
 
   const tenantId = window.localStorage.getItem('smartpark:tenantId');
+  const printMethod = readStoredPrintMethod();
+  const useRawBtFlow = printMethod === 'rawbt' && isAndroidDevice();
+
   const url = new URL(path, window.location.origin);
   if (tenantId && !url.searchParams.get('tenant')) {
     url.searchParams.set('tenant', tenantId);
   }
+
+  if (useRawBtFlow) {
+    url.searchParams.set('printMode', 'rawbt');
+    url.searchParams.set('autoPrint', '0');
+  }
+
   const finalPath = `${url.pathname}${url.search}${url.hash}`;
+
+  if (useRawBtFlow) {
+    const rawBtWindow = window.open(finalPath, '_blank', 'noopener,noreferrer');
+    if (!rawBtWindow) {
+      window.location.assign(finalPath);
+    }
+    return;
+  }
 
   const popup = window.open(
     finalPath,

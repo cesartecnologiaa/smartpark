@@ -10,6 +10,8 @@ export async function getEstablishmentSettings(tenantId?: string | null): Promis
       name: 'Estacionamento',
       ticketFooter: 'Nao nos responsabilizamos por objetos deixados no veiculo.',
       active: true,
+      printerWidth: '80mm',
+      printMethod: 'browser',
     };
   }
   return snap.data() as EstablishmentSettings;

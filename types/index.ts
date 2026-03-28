@@ -4,6 +4,7 @@ export type TicketStatus = 'ativo' | 'finalizado';
 export type CashStatus = 'aberto' | 'fechado';
 export type PaymentMethod = 'dinheiro' | 'pix' | 'cartao' | 'mensalista';
 export type PrinterWidth = '80mm' | '58mm';
+export type PrintMethod = 'browser' | 'rawbt';
 
 export interface AppUser {
   id: string;
@@ -118,4 +119,5 @@ export interface EstablishmentSettings {
   active?: boolean;
   ticketFooter?: string;
   printerWidth?: PrinterWidth;
+  printMethod?: PrintMethod;
 }
