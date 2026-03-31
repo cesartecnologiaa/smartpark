@@ -1,12 +1,12 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { createUserWithEmailAndPassword, getAuth, signOut as signOutSecondary } from 'firebase/auth';
+import { createUserWithEmailAndPassword, getAuth, sendPasswordResetEmail, signOut as signOutSecondary } from 'firebase/auth';
 import { collection, doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
-import { Plus, ShieldCheck, Users } from 'lucide-react';
+import { ExternalLink, KeyRound, Plus, ShieldCheck, Trash2, Users, X } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import RoleGuard from '@/components/RoleGuard';
-import { db, getSecondaryApp } from '@/lib/firebase';
+import { auth, db, getSecondaryApp } from '@/lib/firebase';
 import { AppUser, UserRole } from '@/types';
 import { DEFAULT_TENANT_ID } from '@/lib/tenant';
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,6 +30,8 @@ export default function UsuariosPage() {
   const [role, setRole] = useState<UserRole>('vendedor');
   const [message, setMessage] = useState('');
   const [filter, setFilter] = useState<'Todos' | 'Ativos' | 'Inativos'>('Todos');
+  const [openActionFor, setOpenActionFor] = useState<string | null>(null);
+  const [busyAction, setBusyAction] = useState<string | null>(null);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'users'), (snap) => {
@@ -91,6 +93,108 @@ export default function UsuariosPage() {
 
   async function toggleActive(user: AppUser) {
     await updateDoc(doc(db, 'users', user.id), { active: user.active === false ? true : false });
+  }
+
+
+  async function handlePasswordReset(user: AppUser) {
+    try {
+      setBusyAction(`password-${user.id}`);
+      await sendPasswordResetEmail(auth, user.email);
+      setMessage(`Link para redefinição de senha enviado para ${user.email}.`);
+      setOpenActionFor(null);
+    } catch (error: any) {
+      setMessage(error?.message || 'Não foi possível enviar a redefinição de senha.');
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function handleChangeRole(user: AppUser) {
+    try {
+      setBusyAction(`role-${user.id}`);
+      await toggleRole(user);
+      setMessage(`Cargo de ${user.name} atualizado com sucesso.`);
+      setOpenActionFor(null);
+    } catch (error: any) {
+      setMessage(error?.message || 'Não foi possível alterar o cargo.');
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function handleDeleteUser(user: AppUser) {
+    const confirmed = typeof window === 'undefined' ? false : window.confirm(`Deseja excluir ${user.name}? O acesso será bloqueado e o usuário ficará inativo.`);
+    if (!confirmed) return;
+
+    try {
+      setBusyAction(`delete-${user.id}`);
+      await updateDoc(doc(db, 'users', user.id), {
+        active: false,
+        deletedAt: new Date().toISOString(),
+      });
+      setMessage(`Usuário ${user.name} excluído com sucesso.`);
+      setOpenActionFor(null);
+    } catch (error: any) {
+      setMessage(error?.message || 'Não foi possível excluir o usuário.');
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  function renderActionsMenu(user: AppUser) {
+    const isOpen = openActionFor === user.id;
+    return (
+      <div className="relative">
+        <button
+          type="button"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-blue-300 hover:text-blue-600"
+          onClick={() => setOpenActionFor((current) => (current === user.id ? null : user.id))}
+          aria-label={`Abrir ações de ${user.name}`}
+        >
+          <ExternalLink size={18} />
+        </button>
+
+        {isOpen ? (
+          <>
+            <button
+              type="button"
+              className="fixed inset-0 z-30 bg-transparent"
+              onClick={() => setOpenActionFor(null)}
+              aria-label="Fechar ações"
+            />
+            <div className="absolute right-0 top-14 z-40 min-w-[220px] rounded-3xl border border-slate-200 bg-white/95 p-2 shadow-2xl backdrop-blur">
+              <button
+                type="button"
+                className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                onClick={() => handleChangeRole(user)}
+                disabled={busyAction === `role-${user.id}`}
+              >
+                <ShieldCheck size={16} />
+                <span>Cargo</span>
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                onClick={() => handlePasswordReset(user)}
+                disabled={busyAction === `password-${user.id}`}
+              >
+                <KeyRound size={16} />
+                <span>Alterar senha</span>
+              </button>
+              <button
+                type="button"
+                className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-rose-600 transition hover:bg-rose-50"
+                onClick={() => handleDeleteUser(user)}
+                disabled={busyAction === `delete-${user.id}`}
+              >
+                <Trash2 size={16} />
+                <span>Excluir usuário</span>
+              </button>
+            </div>
+          </>
+        ) : null}
+      </div>
+    );
   }
 
   return (
@@ -200,13 +304,11 @@ export default function UsuariosPage() {
                     </div>
                   </div>
 
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <button className="secondary-button w-full justify-center" onClick={() => toggleRole(user)}>
-                      Alterar Cargo
-                    </button>
+                  <div className="mt-4 flex items-center justify-between gap-3">
                     <button className="secondary-button w-full justify-center" onClick={() => toggleActive(user)}>
                       {user.active === false ? 'Ativar' : 'Inativar'}
                     </button>
+                    {renderActionsMenu(user)}
                   </div>
                 </article>
               ))}
@@ -240,13 +342,11 @@ export default function UsuariosPage() {
                           </span>
                         </td>
                         <td>
-                          <div className="flex flex-wrap gap-2">
-                            <button className="secondary-button py-2" onClick={() => toggleRole(user)}>
-                              Alterar Cargo
-                            </button>
+                          <div className="flex items-center justify-end gap-2">
                             <button className="secondary-button py-2" onClick={() => toggleActive(user)}>
                               {user.active === false ? 'Ativar' : 'Inativar'}
                             </button>
+                            {renderActionsMenu(user)}
                           </div>
                         </td>
                       </tr>
