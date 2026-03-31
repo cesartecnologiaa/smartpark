@@ -77,7 +77,6 @@ export default function PrintCaixaPage({ params }: { params: { id: string } }) {
   if (!cash) {
     return (
       <>
-        {printMode === 'rawbt' ? <RawbtToolbar onPrint={handlePrintClick} onShare={handleShareClick} canShare={canShare} /> : null}
         <div className="print-ticket-page">
         <div className="print-loading">Preparando cupom...</div>
       </div>
@@ -87,7 +86,6 @@ export default function PrintCaixaPage({ params }: { params: { id: string } }) {
 
   return (
     <>
-      {printMode === 'rawbt' ? <RawbtToolbar onPrint={handlePrintClick} onShare={handleShareClick} canShare={canShare} /> : null}
       <div className="print-ticket-page">
         <div className="print-ticket">
           <div className="ticket-header">
