@@ -373,14 +373,14 @@ export default function RelatoriosPage() {
       <div>
         <PageHeader
           title="Relatórios"
-          subtitle="Análise financeira e operacional"
+          subtitle="Análise financeira e operacional com filtros, resumo e transações do período"
           actions={
             <>
-              <button className="secondary-button" onClick={exportCsv}>
+              <button className="secondary-button w-full justify-center sm:w-auto" onClick={exportCsv}>
                 <Download size={16} />
                 Exportar CSV
               </button>
-              <button className="primary-button" onClick={exportPdf}>
+              <button className="primary-button w-full justify-center sm:w-auto" onClick={exportPdf}>
                 <FileText size={16} />
                 Exportar PDF
               </button>
@@ -388,108 +388,226 @@ export default function RelatoriosPage() {
           }
         />
 
-        <div className="panel-card mb-6 p-6">
+        <div className="panel-card mb-6 p-4 sm:p-6">
+          <div className="mb-4 flex flex-col gap-1">
+            <h2 className="text-lg font-semibold text-slate-900">Filtros do relatório</h2>
+            <p className="text-sm text-slate-500">Defina período, forma de pagamento e localize rapidamente um cupom ou placa.</p>
+          </div>
+
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <input
-              className="app-input"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-            />
-            <input
-              className="app-input"
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-            />
-            <select
-              className="app-input"
-              value={paymentFilter}
-              onChange={(e) => setPaymentFilter(e.target.value as 'todos' | PaymentMethod)}
-            >
-              <option value="todos">Todas as formas</option>
-              <option value="dinheiro">Dinheiro</option>
-              <option value="pix">PIX</option>
-              <option value="cartao">Cartão</option>
-              <option value="mensalista">Mensalista</option>
-            </select>
-            <div className="relative">
-              <Search
-                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                size={18}
-              />
+            <label className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-slate-600">Data inicial</span>
               <input
-                className="app-input pl-11"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar por número do cupom ou placa"
+                className="app-input"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
               />
-            </div>
+            </label>
+
+            <label className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-slate-600">Data final</span>
+              <input
+                className="app-input"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </label>
+
+            <label className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-slate-600">Forma de pagamento</span>
+              <select
+                className="app-input"
+                value={paymentFilter}
+                onChange={(e) => setPaymentFilter(e.target.value as 'todos' | PaymentMethod)}
+              >
+                <option value="todos">Todas as formas</option>
+                <option value="dinheiro">Dinheiro</option>
+                <option value="pix">PIX</option>
+                <option value="cartao">Cartão</option>
+                <option value="mensalista">Mensalista</option>
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-slate-600">Buscar cupom ou placa</span>
+              <div className="relative">
+                <Search
+                  className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                  size={18}
+                />
+                <input
+                  className="app-input pl-11"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Ex.: 1234 ou ABC1D23"
+                />
+              </div>
+            </label>
           </div>
         </div>
 
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             title="Faturamento Total"
             value={money(totals.totalRevenue)}
-            icon={<Download size={20} />}
+            icon={<FileText size={20} />}
+            hint="Somatório das saídas filtradas"
           />
           <StatCard
             title="Total de Veículos"
             value={String(totals.totalVehicles)}
-            icon={<Printer size={20} />}
+            icon={<Search size={20} />}
             tone="green"
+            hint="Tickets finalizados no período"
           />
           <StatCard
             title="Saídas Realizadas"
             value={String(totals.exits)}
             icon={<Printer size={20} />}
             tone="red"
+            hint="Registros concluídos"
           />
           <StatCard
             title="Ticket Médio"
             value={money(totals.ticketAverage)}
             icon={<MessageCircleMore size={20} />}
             tone="slate"
+            hint="Valor médio por atendimento"
           />
         </div>
 
-        <div className="mt-6 grid gap-6 xl:grid-cols-[0.95fr,1.05fr]">
-          <div className="panel-card p-6">
-            <h2 className="text-lg font-semibold text-slate-900">Faturamento Diário</h2>
-            <div className="mt-4 space-y-4">
-              {dailySummary.map(([date, value]) => (
-                <div key={date}>
-                  <div className="mb-2 flex items-center justify-between text-sm text-slate-600">
-                    <span>{date}</span>
-                    <strong className="text-slate-900">{money(value)}</strong>
-                  </div>
-                  <div className="h-3 rounded-full bg-slate-100">
-                    <div
-                      className="h-3 rounded-full bg-blue-600"
-                      style={{
-                        width: `${Math.min(
-                          100,
-                          (value / Math.max(totals.totalRevenue || 1, 1)) * 100
-                        )}%`,
-                      }}
-                    />
-                  </div>
+        <div className="mt-6 grid gap-6 xl:grid-cols-[0.92fr,1.08fr]">
+          <div className="space-y-6">
+            <div className="panel-card p-4 sm:p-6">
+              <div className="mb-4 flex flex-col gap-1">
+                <h2 className="text-lg font-semibold text-slate-900">Faturamento diário</h2>
+                <p className="text-sm text-slate-500">Visualize os valores por dia dentro do período selecionado.</p>
+              </div>
+
+              {dailySummary.length ? (
+                <div className="space-y-4">
+                  {dailySummary.map(([date, value]) => (
+                    <div key={date} className="rounded-3xl border border-slate-100 bg-slate-50/80 p-4">
+                      <div className="mb-3 flex items-center justify-between gap-3 text-sm">
+                        <span className="font-medium text-slate-600">{date}</span>
+                        <strong className="text-base text-slate-900">{money(value)}</strong>
+                      </div>
+                      <div className="h-2.5 overflow-hidden rounded-full bg-slate-200">
+                        <div
+                          className="h-full rounded-full bg-blue-600"
+                          style={{
+                            width: `${Math.min(
+                              100,
+                              (value / Math.max(...dailySummary.map(([, amount]) => amount), 1)) * 100
+                            )}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-              {!filtered.length ? (
-                <p className="text-sm text-slate-500">Nenhum registro no período.</p>
-              ) : null}
+              ) : (
+                <div className="empty-state min-h-[220px]">
+                  <div className="icon-soft-blue"><FileText size={24} /></div>
+                  <h3 className="mt-4 text-lg font-semibold text-slate-900">Nenhum registro no período.</h3>
+                  <p className="mt-2 text-sm text-slate-500">Ajuste os filtros para visualizar o faturamento diário.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="panel-card p-4 sm:p-6">
+              <div className="mb-4 flex flex-col gap-1">
+                <h2 className="text-lg font-semibold text-slate-900">Resumo do período</h2>
+                <p className="text-sm text-slate-500">Visão rápida das principais informações filtradas.</p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
+                  <p className="text-sm font-medium text-slate-500">Período</p>
+                  <p className="mt-2 text-sm font-semibold text-slate-900">{startDate || 'Início'} até {endDate || 'Hoje'}</p>
+                </div>
+                <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
+                  <p className="text-sm font-medium text-slate-500">Pagamento</p>
+                  <p className="mt-2 text-sm font-semibold capitalize text-slate-900">{paymentFilter === 'todos' ? 'Todas as formas' : paymentFilter}</p>
+                </div>
+                <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4 sm:col-span-2">
+                  <p className="text-sm font-medium text-slate-500">Busca atual</p>
+                  <p className="mt-2 break-words text-sm font-semibold text-slate-900">{search.trim() || 'Nenhum termo informado'}</p>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="panel-card p-6">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-lg font-semibold text-slate-900">Transações recentes</h2>
-              <p className="text-sm text-slate-500">{filtered.length} encontradas</p>
+          <div className="panel-card p-4 sm:p-6">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">Transações recentes</h2>
+                <p className="text-sm text-slate-500">{filtered.length} encontradas no período selecionado</p>
+              </div>
             </div>
 
-            <div className="table-shell mt-4 max-h-[560px] overflow-auto">
+            <div className="mt-4 space-y-3 lg:hidden">
+              {paginated.length ? (
+                paginated.map((ticket) => {
+                  const whatsappUrl = buildReceiptWhatsappUrl(ticket, settings?.name || 'Estacionamento');
+
+                  return (
+                    <div key={ticket.id} className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-900">Cupom {ticket.shortTicket}</p>
+                          <p className="mt-1 text-sm text-slate-500">{shortDateTime(ticket.exitAt || ticket.entryAt)}</p>
+                        </div>
+                        <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold capitalize text-slate-700">
+                          {ticket.paymentMethod || '-'}
+                        </span>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                        <div className="rounded-2xl bg-white p-3">
+                          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Placa</p>
+                          <p className="mt-1 font-semibold text-slate-900">{ticket.plate || '-'}</p>
+                        </div>
+                        <div className="rounded-2xl bg-white p-3">
+                          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Valor</p>
+                          <p className="mt-1 font-semibold text-slate-900">{money(ticket.amountCharged)}</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex gap-2">
+                        <button
+                          className="secondary-button flex-1 justify-center py-2"
+                          onClick={() => openPrintPage(`/print/saida/${ticket.id}`)}
+                        >
+                          <Printer size={16} />
+                          Imprimir
+                        </button>
+                        <a
+                          className={`secondary-button flex-1 justify-center py-2 ${
+                            !whatsappUrl ? 'pointer-events-none opacity-50' : ''
+                          }`}
+                          href={whatsappUrl || '#'}
+                          target="_blank"
+                        >
+                          <MessageCircleMore size={16} />
+                          WhatsApp
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="empty-state min-h-[220px]">
+                  <div className="icon-soft-blue"><Search size={24} /></div>
+                  <h3 className="mt-4 text-lg font-semibold text-slate-900">Nenhuma transação encontrada.</h3>
+                  <p className="mt-2 text-sm text-slate-500">Refine os filtros ou escolha outro período.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="table-shell mt-4 hidden lg:block">
               <table>
                 <thead>
                   <tr>
@@ -504,10 +622,7 @@ export default function RelatoriosPage() {
                 <tbody>
                   {paginated.length ? (
                     paginated.map((ticket) => {
-                      const whatsappUrl = buildReceiptWhatsappUrl(
-                        ticket,
-                        settings?.name || 'Estacionamento'
-                      );
+                      const whatsappUrl = buildReceiptWhatsappUrl(ticket, settings?.name || 'Estacionamento');
 
                       return (
                         <tr key={ticket.id}>
@@ -515,7 +630,7 @@ export default function RelatoriosPage() {
                           <td>{ticket.shortTicket}</td>
                           <td>{ticket.plate || '-'}</td>
                           <td>{money(ticket.amountCharged)}</td>
-                          <td>{ticket.paymentMethod || '-'}</td>
+                          <td className="capitalize">{ticket.paymentMethod || '-'}</td>
                           <td>
                             <div className="flex gap-2">
                               <button
@@ -547,20 +662,20 @@ export default function RelatoriosPage() {
               </table>
             </div>
 
-            <div className="mt-4 flex items-center justify-between">
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-slate-500">
                 Página {page} de {totalPages}
               </p>
               <div className="flex gap-3">
                 <button
-                  className="secondary-button py-2"
+                  className="secondary-button flex-1 justify-center py-2 sm:flex-none"
                   disabled={page <= 1}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                 >
                   Anterior
                 </button>
                 <button
-                  className="secondary-button py-2"
+                  className="secondary-button flex-1 justify-center py-2 sm:flex-none"
                   disabled={page >= totalPages}
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 >

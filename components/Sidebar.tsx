@@ -17,19 +17,13 @@ import {
   Wallet,
   Warehouse,
   X,
+  type LucideIcon,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { UserRole } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
-import type { UserRole } from '@/types';
 
-type MenuItem = {
-  href: string;
-  label: string;
-  icon: React.ComponentType<{ size?: number | string; className?: string }>;
-  roles: UserRole[];
-};
-
-const menu: MenuItem[] = [
+const menu = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'vendedor'] },
   { href: '/entrada', label: 'Entrada', icon: Car, roles: ['admin', 'vendedor'] },
   { href: '/saida', label: 'Saída', icon: CreditCard, roles: ['admin', 'vendedor'] },
@@ -40,7 +34,7 @@ const menu: MenuItem[] = [
   { href: '/relatorios', label: 'Relatórios', icon: BarChart3, roles: ['admin'] },
   { href: '/usuarios', label: 'Usuários', icon: ShieldCheck, roles: ['admin'] },
   { href: '/configuracoes', label: 'Configurações', icon: Settings, roles: ['admin', 'vendedor'] },
-];
+] satisfies Array<{ href: string; label: string; icon: LucideIcon; roles: UserRole[] }>;
 
 export default function Sidebar() {
   const pathname = usePathname();
