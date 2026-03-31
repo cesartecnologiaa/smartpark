@@ -8,37 +8,31 @@ function isAndroidDevice() {
   return /Android/i.test(window.navigator.userAgent || '');
 }
 
-function buildReturnTo() {
-  if (typeof window === 'undefined') return '';
-  return `${window.location.pathname}${window.location.search}${window.location.hash}`;
-}
-
 export function openPrintPage(path: string) {
   if (typeof window === 'undefined') return;
 
   const tenantId = window.localStorage.getItem('smartpark:tenantId');
   const printMethod = readStoredPrintMethod();
-  const isAndroid = isAndroidDevice();
-  const useRawBtFlow = printMethod === 'rawbt' && isAndroid;
+  const useRawBtFlow = printMethod === 'rawbt' && isAndroidDevice();
 
   const url = new URL(path, window.location.origin);
   if (tenantId && !url.searchParams.get('tenant')) {
     url.searchParams.set('tenant', tenantId);
   }
 
-  url.searchParams.set('t', String(Date.now()));
-  url.searchParams.set('returnTo', buildReturnTo());
-
   if (useRawBtFlow) {
     url.searchParams.set('printMode', 'rawbt');
     url.searchParams.set('autoPrint', '0');
-    window.location.assign(`${url.pathname}${url.search}${url.hash}`);
-    return;
+    url.searchParams.set('returnTo', `${window.location.pathname}${window.location.search}${window.location.hash}`);
+    url.searchParams.set('t', String(Date.now()));
   }
 
-  url.searchParams.set('autoPrint', isAndroid ? '0' : '1');
-
   const finalPath = `${url.pathname}${url.search}${url.hash}`;
+
+  if (useRawBtFlow) {
+    window.location.assign(finalPath);
+    return;
+  }
 
   const popup = window.open(
     finalPath,
@@ -47,7 +41,7 @@ export function openPrintPage(path: string) {
   );
 
   if (!popup) {
-    window.location.assign(finalPath);
+    window.open(finalPath, '_blank', 'noopener,noreferrer');
     return;
   }
 
