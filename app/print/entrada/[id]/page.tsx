@@ -9,7 +9,7 @@ import { tenantDoc } from '@/lib/tenant';
 import { EstablishmentSettings, ParkingTicket } from '@/types';
 import { shortDate, shortTime } from '@/utils/format';
 import { buildStyles, basePrintStyles } from '@/lib/printStyles';
-import { usePrintLifecycle } from '@/lib/print-context';
+import { usePrintLifecycle } from '../../lib/print-context';
 
 const vehicleLabel = (type: ParkingTicket['vehicleType']) =>
   type === 'CAMINHAO'
