@@ -251,7 +251,7 @@ export default function SaidaPage() {
             <section className="space-y-4">
               <QrScanner onRead={handleQrRead} autoStart={qrAutoStart} variant="inline" />
               <div className="rounded-[22px] border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-500">
-                A câmera abre diretamente por este card. Ao localizar o QR Code, o ticket será carregado automaticamente.
+                Leia o QR Code do cupom.
               </div>
             </section>
           ) : (
