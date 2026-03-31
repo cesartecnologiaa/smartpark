@@ -8,7 +8,7 @@ import { tenantDoc } from '@/lib/tenant';
 import { CashRegister, EstablishmentSettings } from '@/types';
 import { money, shortDateTime } from '@/utils/format';
 import { buildStyles, basePrintStyles } from '@/lib/printStyles';
-import { usePrint } from '@/lib/print-context';
+import { usePrint } from '../../../lib/print-context';
 
 export default function PrintCaixaPage({ params }: { params: { id: string } }) {
   const searchParams = useSearchParams();
