@@ -187,7 +187,7 @@ export default function UsuariosPage() {
       <>
         <button
           type="button"
-          className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-blue-300 hover:text-blue-600"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-blue-300 hover:text-blue-600"
           onClick={(event) => openActionsMenu(event, user.id)}
           aria-label={`Abrir ações de ${user.name}`}
         >
@@ -205,12 +205,12 @@ export default function UsuariosPage() {
                 />
                 <div
                   ref={menuRef}
-                  className="fixed z-[9999] min-w-[220px] rounded-3xl border border-slate-200 bg-white/95 p-2 shadow-2xl backdrop-blur"
+                  className="fixed z-[9999] min-w-[220px] rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl"
                   style={{ top: menuPosition.top, left: menuPosition.left }}
                 >
                   <button
                     type="button"
-                    className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                    className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100"
                     onClick={() => handleChangeRole(user)}
                     disabled={busyAction === `role-${user.id}`}
                   >
@@ -219,7 +219,7 @@ export default function UsuariosPage() {
                   </button>
                   <button
                     type="button"
-                    className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                    className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100"
                     onClick={() => handlePasswordReset(user)}
                     disabled={busyAction === `password-${user.id}`}
                   >
@@ -228,7 +228,7 @@ export default function UsuariosPage() {
                   </button>
                   <button
                     type="button"
-                    className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-rose-600 transition hover:bg-rose-50"
+                    className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium text-rose-600 transition hover:bg-rose-50"
                     onClick={() => handleDeleteUser(user)}
                     disabled={busyAction === `delete-${user.id}`}
                   >
@@ -323,7 +323,7 @@ export default function UsuariosPage() {
           <>
             <div className="space-y-4 lg:hidden">
               {filtered.map((user) => (
-                <article key={user.id} className="panel-card p-4">
+                <article key={user.id} className="rounded-[18px] border border-slate-200 bg-white p-4 shadow-sm">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <h3 className="truncate text-base font-semibold text-slate-900">{user.name}</h3>
@@ -334,7 +334,7 @@ export default function UsuariosPage() {
                     </div>
                   </div>
 
-                  <div className="mt-4 grid gap-3 rounded-[20px] border border-slate-200 bg-slate-50/70 p-3 text-sm">
+                  <div className="mt-4 grid gap-3 rounded-[14px] border border-slate-200 bg-slate-50/70 p-3 text-sm">
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-slate-500">Cargo</span>
                       <strong className="text-right text-slate-900">{roleLabel(user.role)}</strong>
@@ -358,25 +358,25 @@ export default function UsuariosPage() {
               ))}
             </div>
 
-            <div className="panel-card hidden p-6 lg:block">
-              <div className="table-shell">
-                <table>
-                  <thead>
+            <div className="hidden lg:block">
+              <div className="overflow-x-auto rounded-[18px] border border-slate-200 bg-white shadow-sm">
+                <table className="min-w-full border-collapse">
+                  <thead className="bg-slate-50">
                     <tr>
-                      <th>Nome</th>
-                      <th>E-mail</th>
-                      <th>Cargo</th>
-                      <th>Status</th>
-                      <th>Ações</th>
+                      <th className="px-5 py-4 text-left text-sm font-semibold text-slate-600">Nome</th>
+                      <th className="px-5 py-4 text-left text-sm font-semibold text-slate-600">E-mail</th>
+                      <th className="px-5 py-4 text-left text-sm font-semibold text-slate-600">Cargo</th>
+                      <th className="px-5 py-4 text-left text-sm font-semibold text-slate-600">Status</th>
+                      <th className="px-5 py-4 text-right text-sm font-semibold text-slate-600">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filtered.map((user) => (
-                      <tr key={user.id}>
-                        <td>{user.name}</td>
-                        <td>{user.email}</td>
-                        <td>{roleLabel(user.role)}</td>
-                        <td>
+                      <tr key={user.id} className="border-t border-slate-100">
+                        <td className="px-5 py-4 text-sm text-slate-800">{user.name}</td>
+                        <td className="px-5 py-4 text-sm text-slate-800">{user.email}</td>
+                        <td className="px-5 py-4 text-sm text-slate-800">{roleLabel(user.role)}</td>
+                        <td className="px-5 py-4 text-sm text-slate-800">
                           <span
                             className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
                               user.active === false ? 'bg-slate-100 text-slate-700' : 'bg-emerald-100 text-emerald-700'
@@ -385,7 +385,7 @@ export default function UsuariosPage() {
                             {user.active === false ? 'Inativo' : 'Ativo'}
                           </span>
                         </td>
-                        <td>
+                        <td className="px-5 py-4">
                           <div className="flex items-center justify-end">
                             {renderActionsMenu(user)}
                           </div>
