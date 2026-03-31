@@ -19,11 +19,34 @@ const vehicleLabel = (type: ParkingTicket['vehicleType']) =>
     : 'Carro';
 
 
+
+const waitForPaint = () =>
+  new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+
+async function waitForImages() {
+  const images = Array.from(document.images || []).filter((img) => !img.complete);
+  await Promise.all(
+    images.map(
+      (img) =>
+        new Promise<void>((resolve) => {
+          img.addEventListener('load', () => resolve(), { once: true });
+          img.addEventListener('error', () => resolve(), { once: true });
+        })
+    )
+  );
+}
+
+function resolveReturnPath(returnTo: string | null) {
+  return returnTo && returnTo.startsWith('/') ? returnTo : '/';
+}
+
+
 export default function PrintEntradaPage({ params }: { params: { id: string } }) {
   const searchParams = useSearchParams();
   const tenantId = searchParams.get('tenant');
   const autoPrint = searchParams.get('autoPrint') !== '0';
-  const printMode = searchParams.get('printMode');
   const returnTo = searchParams.get('returnTo');
   const [ticket, setTicket] = useState<ParkingTicket | null>(null);
   const [settings, setSettings] = useState<EstablishmentSettings | null>(null);
@@ -31,30 +54,12 @@ export default function PrintEntradaPage({ params }: { params: { id: string } })
   const [readyToPrint, setReadyToPrint] = useState(false);
 
 
-  function handlePrintClick() {
-    window.print();
-  }
-
   useEffect(() => {
-    let cancelled = false;
-
     async function load() {
-      setReadyToPrint(false);
-
       const [ticketSnap, settingsSnap] = await Promise.all([
         getDoc(tenantDoc(db, tenantId, 'parkingTickets', params.id)),
         getDoc(tenantDoc(db, tenantId, 'settings', 'establishment')),
       ]);
-
-      if (cancelled) return;
-
-      const settingsData = settingsSnap.exists()
-        ? (settingsSnap.data() as EstablishmentSettings)
-        : null;
-
-      if (settingsData) {
-        setSettings(settingsData);
-      }
 
       if (ticketSnap.exists()) {
         const data = {
@@ -63,7 +68,10 @@ export default function PrintEntradaPage({ params }: { params: { id: string } })
         };
         setTicket(data);
 
-        const width = settingsData?.printerWidth === '58mm' ? 160 : 220;
+        const width = settingsSnap.exists() && (settingsSnap.data() as EstablishmentSettings).printerWidth === '58mm'
+          ? 160
+          : 220;
+
         const qrUrl = await QRCode.toDataURL(
           JSON.stringify({
             ticketId: data.id,
@@ -73,66 +81,83 @@ export default function PrintEntradaPage({ params }: { params: { id: string } })
           { width, margin: 1 }
         );
 
-        if (cancelled) return;
         setQr(qrUrl);
       }
 
-      if (!cancelled) {
-        setReadyToPrint(true);
+      if (settingsSnap.exists()) {
+        setSettings(settingsSnap.data() as EstablishmentSettings);
       }
+
     }
 
     load();
+  }, [params.id, tenantId]);
+
+  useEffect(() => {
+    document.body.classList.add('print-route-active');
+    document.documentElement.classList.add('print-route-active');
+
+    return () => {
+      document.body.classList.remove('print-route-active');
+      document.documentElement.classList.remove('print-route-active');
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function prepare() {
+      const hasData = Boolean(ticket && settings) && Boolean(qr);
+      if (!hasData) return;
+
+      await waitForPaint();
+      await waitForImages();
+      await waitForPaint();
+
+      if (cancelled) return;
+      setReadyToPrint(true);
+    }
+
+    prepare();
 
     return () => {
       cancelled = true;
     };
-  }, [params.id, tenantId]);
+  }, [ticket, settings, qr]);
 
   useEffect(() => {
     if (!autoPrint || !readyToPrint) return;
 
-    let fallbackTimer: number | undefined;
+    const target = resolveReturnPath(returnTo);
+    let finished = false;
 
-    const finish = () => {
-      if (fallbackTimer) {
-        window.clearTimeout(fallbackTimer);
-      }
-
-      if (returnTo) {
-        window.location.replace(returnTo);
-        return;
-      }
-
-      if (window.history.length > 1) {
-        window.history.back();
-        return;
-      }
-
-      window.close();
+    const complete = () => {
+      if (finished) return;
+      finished = true;
+      window.location.replace(target);
     };
 
     const onAfterPrint = () => {
       window.removeEventListener('afterprint', onAfterPrint);
-      window.setTimeout(finish, 120);
+      setTimeout(complete, 180);
     };
 
     window.addEventListener('afterprint', onAfterPrint);
 
     const printTimer = window.setTimeout(() => {
-      window.scrollTo({ top: 0, behavior: 'auto' });
-      handlePrintClick();
-      fallbackTimer = window.setTimeout(finish, printMode === 'rawbt' ? 2200 : 1200);
-    }, printMode === 'rawbt' ? 650 : 350);
+      window.print();
+    }, 650);
+
+    const fallbackTimer = window.setTimeout(() => {
+      complete();
+    }, 6000);
 
     return () => {
       window.clearTimeout(printTimer);
-      if (fallbackTimer) {
-        window.clearTimeout(fallbackTimer);
-      }
+      window.clearTimeout(fallbackTimer);
       window.removeEventListener('afterprint', onAfterPrint);
     };
-  }, [autoPrint, readyToPrint, returnTo, printMode]);
+  }, [autoPrint, readyToPrint, returnTo]);
 
   const is58 = (settings?.printerWidth || '80mm') === '58mm';
 
@@ -154,19 +179,16 @@ export default function PrintEntradaPage({ params }: { params: { id: string } })
     [is58]
   );
 
-  if (!ticket) {
+  if (!ticket || !settings || !readyToPrint) {
     return (
-      <>
-        <div className="print-ticket-page">
+      <div className="print-ticket-page">
         <div className="print-loading">Preparando cupom...</div>
       </div>
-      </>
     );
   }
 
   return (
-    <>
-      <div className="print-ticket-page">
+    <div className="print-ticket-page">
         <div className="print-ticket">
           <div className="ticket-header">
             <div className="ticket-company">{settings?.name || 'SmartPark'}</div>
@@ -235,13 +257,43 @@ export default function PrintEntradaPage({ params }: { params: { id: string } })
       </div>
 
       <style jsx global>{`
+        html.print-route-active,
+        body.print-route-active {
+          background: #fff !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          min-height: auto !important;
+          overflow: visible !important;
+        }
+
+        body.print-route-active > * {
+          background: #fff !important;
+        }
+
+        .print-loading {
+          width: ${styles.pageWidth};
+          margin: 0 auto;
+          padding: 12mm 4mm;
+          text-align: center;
+          color: #475569;
+          background: #fff;
+          font-family: Arial, Helvetica, sans-serif;
+        }
+
+        @page {
+          size: ${styles.pageWidth} auto;
+          margin: 0;
+        }
+
         .print-ticket-page {
           display: flex;
           justify-content: center;
-          align-items: flex-start;
           padding: 0;
-          background: ${printMode === 'rawbt' ? '#fff' : '#eef2f7'};
-          min-height: ${printMode === 'rawbt' ? 'auto' : '100vh'};
+          background: #fff;
+          min-height: auto;
+          width: ${styles.pageWidth};
+          max-width: 100%;
+          margin: 0 auto;
         }
 
         .print-ticket {
@@ -251,22 +303,7 @@ export default function PrintEntradaPage({ params }: { params: { id: string } })
           padding: ${styles.padding};
           box-sizing: border-box;
           font-family: Arial, Helvetica, sans-serif;
-          box-shadow: ${printMode === 'rawbt' || is58 ? 'none' : '0 0 0 1px #e5e7eb, 0 8px 20px rgba(15, 23, 42, 0.08)'};
-          margin: 0 auto;
-        }
-
-        .print-loading {
-          width: ${styles.pageWidth};
-          min-height: 24mm;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: #fff;
-          color: #111827;
-          font-family: Arial, Helvetica, sans-serif;
-          font-size: ${styles.rowFont};
-          padding: ${styles.padding};
-          box-sizing: border-box;
+          box-shadow: none;
         }
 
         .ticket-header {
@@ -376,6 +413,48 @@ export default function PrintEntradaPage({ params }: { params: { id: string } })
           height: ${styles.cutHeight};
         }
 
+        .rawbt-toolbar {
+          display: flex;
+          justify-content: space-between;
+          gap: 12px;
+          align-items: center;
+          padding: 10px 12px;
+          background: #e2e8f0;
+          border-bottom: 1px solid #cbd5e1;
+          font-family: Arial, Helvetica, sans-serif;
+        }
+
+        .rawbt-toolbar strong {
+          display: block;
+          color: #0f172a;
+          font-size: 14px;
+        }
+
+        .rawbt-toolbar p {
+          margin: 4px 0 0;
+          color: #475569;
+          font-size: 12px;
+        }
+
+        .rawbt-actions {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: flex-end;
+          gap: 8px;
+        }
+
+        .rawbt-actions button {
+          appearance: none;
+          border: 0;
+          border-radius: 10px;
+          background: #0f172a;
+          color: #fff;
+          padding: 11px 14px;
+          font-size: 13px;
+          font-weight: 600;
+        }
+
+
         .ticket-header,
         .ticket-dashed,
         .ticket-footer,
@@ -408,22 +487,30 @@ export default function PrintEntradaPage({ params }: { params: { id: string } })
             box-shadow: none;
             margin: 0 auto;
           }
+
+          .rawbt-toolbar {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+          }
         }
 
         @media print {
+          .rawbt-toolbar {
+            display: none;
+          }
+
           @page {
-            size: ${styles.pageWidth};
+            size: ${styles.pageWidth} auto;
             margin: 0;
           }
 
           html,
           body {
             width: ${styles.pageWidth};
-            max-width: ${styles.pageWidth};
             margin: 0;
             padding: 0;
             background: #fff;
-            overflow: hidden;
           }
 
           body {
@@ -438,14 +525,8 @@ export default function PrintEntradaPage({ params }: { params: { id: string } })
             background: #fff;
           }
 
-          .print-loading {
-            display: none;
-          }
-
           .print-ticket {
             width: ${styles.pageWidth} !important;
-            max-width: ${styles.pageWidth} !important;
-            min-width: ${styles.pageWidth} !important;
             min-width: ${styles.pageWidth};
             max-width: ${styles.pageWidth};
             box-shadow: none;
