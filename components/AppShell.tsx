@@ -45,7 +45,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         <Sidebar />
 
         <div className="app-main-area">
-          <main className="app-content overflow-x-hidden">{children}</main>
+          <main className="app-content">{children}</main>
 
           <footer className="app-footer">
             <p className="app-footer-main">Desenvolvido por Cesar Soluções em Tecnologia</p>

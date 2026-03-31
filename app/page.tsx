@@ -50,7 +50,7 @@ export default function DashboardPage() {
   const freeSpaces = spaces.filter((space) => space.status === 'livre').length;
 
   return (
-    <div className="overflow-x-hidden">
+    <div>
       <PageHeader
         title="Dashboard"
         subtitle="Seu Estacionamento Inteligente — visão geral da operação em tempo real"
@@ -62,16 +62,16 @@ export default function DashboardPage() {
         }
       />
 
-      <div className="grid gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-5 xl:grid-cols-4 md:grid-cols-2">
         <StatCard title="Veículos no Pátio" value={`${activeTickets.length}${spaces.length ? `/${spaces.length}` : ''}`} icon={<CarFront size={20} />} hint={spaces.length ? `${freeSpaces} vagas disponíveis` : 'Nenhuma vaga cadastrada'} />
         <StatCard title="Entradas Hoje" value={String(todayEntries.length)} icon={<LogIn size={20} />} tone="green" />
         <StatCard title="Saídas Hoje" value={String(todayExits.length)} icon={<ArrowRightLeft size={20} />} tone="red" />
         {profile?.role === 'admin' ? <StatCard title="Faturamento Hoje" value={money(revenueToday)} icon={<CircleDollarSign size={20} />} tone="blue" hint={openCash ? `Caixa aberto por ${openCash.operatorName}` : 'Nenhum caixa aberto'} /> : <StatCard title="Status do Caixa" value={openCash ? 'Aberto' : 'Fechado'} icon={<Wallet size={20} />} tone="slate" hint={openCash ? `Operador ${openCash.operatorName}` : 'Abra o caixa para operar'} />}
       </div>
 
-      <div className="mt-6 grid gap-4 sm:gap-6 xl:grid-cols-[1.4fr,0.9fr]">
-        <div className="panel-card p-4 sm:p-6">
-          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-6 grid gap-6 xl:grid-cols-[1.4fr,0.9fr]">
+        <div className="panel-card p-6">
+          <div className="mb-4 flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold text-slate-900">Veículos no pátio</h2>
               <p className="text-sm text-slate-500">Acompanhamento dos tickets em aberto</p>
@@ -111,7 +111,7 @@ export default function DashboardPage() {
           )}
         </div>
 
-        <div className="panel-card p-4 sm:p-6">
+        <div className="panel-card p-6">
           <h2 className="text-lg font-semibold text-slate-900">Status operacional</h2>
           <div className="mt-4 space-y-4">
             <div className="rounded-3xl bg-slate-50 p-4">

@@ -18,11 +18,10 @@ import {
   Warehouse,
   X,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import type { UserRole } from '@/types';
 
-const menu: ReadonlyArray<{ href: string; label: string; icon: any; roles: UserRole[] }> = [
+const menu = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'vendedor'] },
   { href: '/entrada', label: 'Entrada', icon: Car, roles: ['admin', 'vendedor'] },
   { href: '/saida', label: 'Saída', icon: CreditCard, roles: ['admin', 'vendedor'] },
@@ -33,17 +32,13 @@ const menu: ReadonlyArray<{ href: string; label: string; icon: any; roles: UserR
   { href: '/relatorios', label: 'Relatórios', icon: BarChart3, roles: ['admin'] },
   { href: '/usuarios', label: 'Usuários', icon: ShieldCheck, roles: ['admin'] },
   { href: '/configuracoes', label: 'Configurações', icon: Settings, roles: ['admin', 'vendedor'] },
-];
+] as const;
 
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { profile, logout } = useAuth();
   const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
 
   const allowedMenu = useMemo(
     () => menu.filter((item) => (profile ? item.roles.includes(profile.role) : false)),
@@ -61,14 +56,12 @@ export default function Sidebar() {
 
   return (
     <>
-      <button className="primary-outline mobile-safe-top fixed right-3 top-3 z-50 lg:hidden" type="button" aria-label={open ? 'Fechar menu' : 'Abrir menu'} onClick={() => setOpen((v) => !v)}>
+      <button className="primary-outline fixed right-4 top-4 z-50 lg:hidden" type="button" onClick={() => setOpen((v) => !v)}>
         {open ? <X size={18} /> : <Menu size={18} />}
       </button>
 
-      {open ? <button type="button" className="fixed inset-0 z-30 bg-slate-950/30 backdrop-blur-[2px] lg:hidden" aria-label="Fechar menu" onClick={() => setOpen(false)} /> : null}
-
-      <aside className={`sidebar-shell mobile-safe-bottom ${open ? 'fixed inset-x-3 top-3 bottom-3 z-40 flex flex-col overflow-y-auto' : 'hidden'} lg:sticky lg:top-6 lg:flex lg:h-fit lg:max-h-[calc(100vh-48px)] lg:flex-col lg:overflow-hidden`}>
-        <div className="min-h-0 flex-1">
+      <aside className={`sidebar-shell ${open ? 'fixed inset-y-4 left-4 right-4 z-40 block' : 'hidden'} lg:sticky lg:top-6 lg:block`}>
+        <div>
           <div className="mb-8 flex items-center gap-3 px-2">
             <Image src="/icon-smartpark.svg" alt="SmartPark" width={48} height={48} priority />
             <div className="min-w-0">
@@ -77,7 +70,7 @@ export default function Sidebar() {
             </div>
           </div>
 
-          <nav className="space-y-1.5 overflow-y-auto pr-1">
+          <nav className="space-y-1.5">
             {allowedMenu.map((item) => {
               const active = pathname === item.href;
               const Icon = item.icon;
@@ -96,7 +89,7 @@ export default function Sidebar() {
           </nav>
         </div>
 
-        <div className="mt-6 rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+        <div className="mt-8 rounded-[24px] border border-slate-200 bg-slate-50 p-4">
           <div className="space-y-1">
             <div className="text-base font-semibold text-slate-950">{profile.name}</div>
             <div className="break-all text-xs text-slate-500">{profile.email}</div>
