@@ -7,7 +7,7 @@ import { db } from '@/lib/firebase';
 import { tenantDoc } from '@/lib/tenant';
 import { EstablishmentSettings, ParkingTicket } from '@/types';
 import { formatDurationMinutes, money, shortDateTime } from '@/utils/format';
-import { buildStyles, basePrintStyles } from '../../../entrada/[id]/page';
+import { buildStyles, basePrintStyles } from '@/lib/printStyles';
 
 const vehicleLabel = (type: ParkingTicket['vehicleType']) =>
   type === 'CAMINHAO' ? 'Caminhão' : type === 'CAMINHONETE' ? 'Caminhonete' : type === 'MOTO' ? 'Moto' : 'Carro';

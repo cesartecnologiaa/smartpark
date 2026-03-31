@@ -7,7 +7,7 @@ import { db } from '@/lib/firebase';
 import { tenantDoc } from '@/lib/tenant';
 import { CashRegister, EstablishmentSettings } from '@/types';
 import { money, shortDateTime } from '@/utils/format';
-import { buildStyles, basePrintStyles } from '../../../entrada/[id]/page';
+import { buildStyles, basePrintStyles } from '@/lib/printStyles';
 
 export default function PrintCaixaPage({ params }: { params: { id: string } }) {
   const searchParams = useSearchParams();
