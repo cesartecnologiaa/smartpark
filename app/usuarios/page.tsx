@@ -91,10 +91,6 @@ export default function UsuariosPage() {
     await updateDoc(doc(db, 'users', user.id), { role: nextRole });
   }
 
-  async function toggleActive(user: AppUser) {
-    await updateDoc(doc(db, 'users', user.id), { active: user.active === false ? true : false });
-  }
-
 
   async function handlePasswordReset(user: AppUser) {
     try {
@@ -274,85 +270,75 @@ export default function UsuariosPage() {
 
         {filtered.length ? (
           <>
-            <div className="space-y-4 lg:hidden">
+            <div className="space-y-3 lg:hidden">
               {filtered.map((user) => (
-                <article key={user.id} className="panel-card p-4">
+                <article key={user.id} className="rounded-3xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <h3 className="truncate text-base font-semibold text-slate-900">{user.name}</h3>
                       <p className="mt-1 break-all text-sm text-slate-500">{user.email}</p>
                     </div>
-                    <div className="icon-soft-blue shrink-0">
-                      <ShieldCheck size={18} />
-                    </div>
+                    {renderActionsMenu(user)}
                   </div>
 
-                  <div className="mt-4 grid gap-3 rounded-[20px] border border-slate-200 bg-slate-50/70 p-3 text-sm">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-slate-500">Cargo</span>
-                      <strong className="text-right text-slate-900">{roleLabel(user.role)}</strong>
+                  <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="block text-slate-500">Cargo</span>
+                      <strong className="mt-1 block text-slate-900">{roleLabel(user.role)}</strong>
                     </div>
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-slate-500">Status</span>
+                    <div>
+                      <span className="block text-slate-500">Status</span>
                       <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                          user.active === false ? 'bg-slate-200 text-slate-700' : 'bg-emerald-100 text-emerald-700'
+                        className={`mt-1 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                          user.active === false ? 'bg-slate-100 text-slate-700' : 'bg-emerald-100 text-emerald-700'
                         }`}
                       >
                         {user.active === false ? 'Inativo' : 'Ativo'}
                       </span>
                     </div>
                   </div>
-
-                  <div className="mt-4 flex items-center justify-between gap-3">
-                    <button className="secondary-button w-full justify-center" onClick={() => toggleActive(user)}>
-                      {user.active === false ? 'Ativar' : 'Inativar'}
-                    </button>
-                    {renderActionsMenu(user)}
-                  </div>
                 </article>
               ))}
             </div>
 
-            <div className="panel-card hidden p-6 lg:block">
-              <div className="table-shell">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Nome</th>
-                      <th>E-mail</th>
-                      <th>Cargo</th>
-                      <th>Status</th>
-                      <th>Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map((user) => (
-                      <tr key={user.id}>
-                        <td>{user.name}</td>
-                        <td>{user.email}</td>
-                        <td>{roleLabel(user.role)}</td>
-                        <td>
-                          <span
-                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                              user.active === false ? 'bg-slate-100 text-slate-700' : 'bg-emerald-100 text-emerald-700'
-                            }`}
-                          >
-                            {user.active === false ? 'Inativo' : 'Ativo'}
-                          </span>
-                        </td>
-                        <td>
-                          <div className="flex items-center justify-end gap-2">
-                            <button className="secondary-button py-2" onClick={() => toggleActive(user)}>
-                              {user.active === false ? 'Ativar' : 'Inativar'}
-                            </button>
-                            {renderActionsMenu(user)}
-                          </div>
-                        </td>
+            <div className="hidden lg:block">
+              <div className="overflow-visible rounded-[24px] border border-slate-200 bg-white">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full border-collapse">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <th className="border-b border-slate-100 px-4 py-3 text-left text-sm font-semibold text-slate-500">Nome</th>
+                        <th className="border-b border-slate-100 px-4 py-3 text-left text-sm font-semibold text-slate-500">E-mail</th>
+                        <th className="border-b border-slate-100 px-4 py-3 text-left text-sm font-semibold text-slate-500">Cargo</th>
+                        <th className="border-b border-slate-100 px-4 py-3 text-left text-sm font-semibold text-slate-500">Status</th>
+                        <th className="border-b border-slate-100 px-4 py-3 text-right text-sm font-semibold text-slate-500">Ações</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {filtered.map((user) => (
+                        <tr key={user.id}>
+                          <td className="border-b border-slate-100 px-4 py-3 text-sm text-slate-700">{user.name}</td>
+                          <td className="border-b border-slate-100 px-4 py-3 text-sm text-slate-700">{user.email}</td>
+                          <td className="border-b border-slate-100 px-4 py-3 text-sm text-slate-700">{roleLabel(user.role)}</td>
+                          <td className="border-b border-slate-100 px-4 py-3 text-sm text-slate-700">
+                            <span
+                              className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                                user.active === false ? 'bg-slate-100 text-slate-700' : 'bg-emerald-100 text-emerald-700'
+                              }`}
+                            >
+                              {user.active === false ? 'Inativo' : 'Ativo'}
+                            </span>
+                          </td>
+                          <td className="border-b border-slate-100 px-4 py-3 text-right text-sm text-slate-700">
+                            <div className="relative inline-flex items-center justify-end">
+                              {renderActionsMenu(user)}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </>
