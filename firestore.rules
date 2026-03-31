@@ -9,10 +9,6 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
-    function normalizedTenantId() {
-      return me().tenantId != null ? me().tenantId : 'default';
-    }
-
     function isAdmin() {
       return signedIn() && me().role == 'admin' && me().active != false;
     }
@@ -21,22 +17,9 @@ service cloud.firestore {
       return signedIn() && (me().role == 'admin' || me().role == 'vendedor') && me().active != false;
     }
 
-    function tenantMatches(tenantId) {
-      return signedIn() && normalizedTenantId() == tenantId;
-    }
-
     match /users/{userId} {
       allow read: if isOperator();
-      allow create: if isAdmin() || (signedIn() && request.auth.uid == userId);
-      allow update: if isAdmin() || (signedIn() && request.auth.uid == userId);
-    }
-
-    match /settings/{docId} {
-      allow read, write: if isOperator();
-    }
-
-    match /parkingSpaces/{docId} {
-      allow read, write: if isOperator();
+      allow create, update: if isAdmin();
     }
 
     match /priceSettings/{docId} {
@@ -57,10 +40,6 @@ service cloud.firestore {
     match /monthlyCustomers/{docId} {
       allow read: if isOperator();
       allow create, update: if isOperator();
-    }
-
-    match /tenants/{tenantId}/{document=**} {
-      allow read, write: if tenantMatches(tenantId) && isOperator();
     }
   }
 }

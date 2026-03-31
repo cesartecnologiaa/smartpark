@@ -15,9 +15,7 @@ export interface AppUser {
   jobTitle?: string;
   photoUrl?: string;
   createdAt?: string;
-  tenantId?: string;
 }
-
 
 export interface PriceSetting {
   id?: string;
@@ -103,9 +101,7 @@ export interface MonthlyCustomer {
   lastPaymentDate?: string;
   active: boolean;
   createdAt?: string;
-  tenantId?: string;
 }
-
 
 export interface EstablishmentSettings {
   id?: string;

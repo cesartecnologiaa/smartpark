@@ -1,15 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { getDoc, onSnapshot } from 'firebase/firestore';
+import { collection, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { Download, FileText, MessageCircleMore, Printer, Search } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import PageHeader from '@/components/PageHeader';
 import RoleGuard from '@/components/RoleGuard';
 import StatCard from '@/components/StatCard';
 import { db } from '@/lib/firebase';
-import { tenantCollection, tenantDoc } from '@/lib/tenant';
-import { useAuth } from '@/contexts/AuthContext';
 import { openPrintPage } from '@/lib/print';
 import { EstablishmentSettings, ParkingTicket, PaymentMethod } from '@/types';
 import { money, shortDateTime } from '@/utils/format';
@@ -18,7 +16,6 @@ import { buildReceiptWhatsappUrl } from '@/utils/whatsapp';
 const PAGE_SIZE = 10;
 
 export default function RelatoriosPage() {
-  const { profile } = useAuth();
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [search, setSearch] = useState('');
@@ -28,18 +25,16 @@ export default function RelatoriosPage() {
   const [page, setPage] = useState(1);
 
   useEffect(() => {
-    if (!profile) return;
-
-    const unsub = onSnapshot(tenantCollection(db, profile?.tenantId, 'parkingTickets'), (snap) => {
+    const unsub = onSnapshot(collection(db, 'parkingTickets'), (snap) => {
       setTickets(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ParkingTicket, 'id'>) })));
     });
 
-    getDoc(tenantDoc(db, profile?.tenantId, 'settings', 'establishment')).then((snap) => {
+    getDoc(doc(db, 'settings', 'establishment')).then((snap) => {
       if (snap.exists()) setSettings(snap.data() as EstablishmentSettings);
     });
 
     return () => unsub();
-  }, [profile, profile?.tenantId]);
+  }, []);
 
   const filtered = useMemo(() => {
     return tickets
@@ -375,58 +370,205 @@ export default function RelatoriosPage() {
 
   return (
     <RoleGuard roles={['admin']}>
-      <div className="overflow-x-hidden">
+      <div>
         <PageHeader
           title="Relatórios"
           subtitle="Análise financeira e operacional"
-          actions={<>
-            <button className="secondary-button" onClick={exportCsv}><Download size={16} />Exportar CSV</button>
-            <button className="primary-button" onClick={exportPdf}><FileText size={16} />Exportar PDF</button>
-          </>}
+          actions={
+            <>
+              <button className="secondary-button" onClick={exportCsv}>
+                <Download size={16} />
+                Exportar CSV
+              </button>
+              <button className="primary-button" onClick={exportPdf}>
+                <FileText size={16} />
+                Exportar PDF
+              </button>
+            </>
+          }
         />
 
-        <div className="panel-card mb-6 overflow-hidden">
-          <div className="border-b border-slate-200/70 px-4 py-4 sm:px-6">
-            <h2 className="text-base font-semibold text-slate-900">Filtros do relatório</h2>
-            <p className="mt-1 text-sm text-slate-500">Defina período, forma de pagamento e busca por cupom ou placa.</p>
-          </div>
-          <div className="grid gap-4 px-4 py-4 sm:px-6 sm:py-5 md:grid-cols-2 xl:grid-cols-4">
-            <div className="space-y-2"><label className="text-sm font-medium text-slate-700">Data inicial</label><input className="app-input" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></div>
-            <div className="space-y-2"><label className="text-sm font-medium text-slate-700">Data final</label><input className="app-input" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></div>
-            <div className="space-y-2"><label className="text-sm font-medium text-slate-700">Forma de pagamento</label><select className="app-input" value={paymentFilter} onChange={(e) => setPaymentFilter(e.target.value as 'todos' | PaymentMethod)}><option value="todos">Todas as formas</option><option value="dinheiro">Dinheiro</option><option value="pix">PIX</option><option value="cartao">Cartão</option><option value="mensalista">Mensalista</option></select></div>
-            <div className="space-y-2"><label className="text-sm font-medium text-slate-700">Buscar cupom ou placa</label><div className="relative"><Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} /><input className="app-input pl-11" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Ex: 1234 ou ABC1234" /></div></div>
+        <div className="panel-card mb-6 p-6">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <input
+              className="app-input"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+            <input
+              className="app-input"
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+            <select
+              className="app-input"
+              value={paymentFilter}
+              onChange={(e) => setPaymentFilter(e.target.value as 'todos' | PaymentMethod)}
+            >
+              <option value="todos">Todas as formas</option>
+              <option value="dinheiro">Dinheiro</option>
+              <option value="pix">PIX</option>
+              <option value="cartao">Cartão</option>
+              <option value="mensalista">Mensalista</option>
+            </select>
+            <div className="relative">
+              <Search
+                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                size={18}
+              />
+              <input
+                className="app-input pl-11"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar por número do cupom ou placa"
+              />
+            </div>
           </div>
         </div>
 
-        <div className="grid gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-4">
-          <StatCard title="Faturamento Total" value={money(totals.totalRevenue)} icon={<Download size={20} />} hint="Total das saídas filtradas" />
-          <StatCard title="Total de Veículos" value={String(totals.totalVehicles)} icon={<Printer size={20} />} tone="green" hint="Quantidade de tickets finalizados" />
-          <StatCard title="Saídas Realizadas" value={String(totals.exits)} icon={<Printer size={20} />} tone="red" hint="Movimentações concluídas no período" />
-          <StatCard title="Ticket Médio" value={money(totals.ticketAverage)} icon={<MessageCircleMore size={20} />} tone="slate" hint="Valor médio por saída" />
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            title="Faturamento Total"
+            value={money(totals.totalRevenue)}
+            icon={<Download size={20} />}
+          />
+          <StatCard
+            title="Total de Veículos"
+            value={String(totals.totalVehicles)}
+            icon={<Printer size={20} />}
+            tone="green"
+          />
+          <StatCard
+            title="Saídas Realizadas"
+            value={String(totals.exits)}
+            icon={<Printer size={20} />}
+            tone="red"
+          />
+          <StatCard
+            title="Ticket Médio"
+            value={money(totals.ticketAverage)}
+            icon={<MessageCircleMore size={20} />}
+            tone="slate"
+          />
         </div>
 
-        <div className="mt-6 grid gap-4 sm:gap-6 xl:grid-cols-[0.92fr,1.08fr]">
-          <section className="panel-card overflow-hidden">
-            <div className="border-b border-slate-200/70 px-4 py-4 sm:px-6"><h2 className="text-lg font-semibold text-slate-900">Resumo do período</h2><p className="mt-1 text-sm text-slate-500">Acompanhe o faturamento diário do período selecionado.</p></div>
-            <div className="p-4 sm:p-6">
-              <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4"><div className="flex items-center justify-between gap-3 text-sm text-slate-600"><span>Período analisado</span><strong className="text-right text-slate-900">{startDate || 'Início'} até {endDate || 'Hoje'}</strong></div></div>
-              <div className="mt-4 space-y-4">
-                {dailySummary.length ? dailySummary.map(([date, value]) => (
-                  <div key={date}>
-                    <div className="mb-2 flex items-center justify-between gap-3 text-sm text-slate-600"><span>{date}</span><strong className="text-slate-900">{money(value)}</strong></div>
-                    <div className="h-3 rounded-full bg-slate-100"><div className="h-3 rounded-full bg-blue-600" style={{ width: `${Math.min(100, (value / Math.max(totals.totalRevenue || 1, 1)) * 100)}%` }} /></div>
+        <div className="mt-6 grid gap-6 xl:grid-cols-[0.95fr,1.05fr]">
+          <div className="panel-card p-6">
+            <h2 className="text-lg font-semibold text-slate-900">Faturamento Diário</h2>
+            <div className="mt-4 space-y-4">
+              {dailySummary.map(([date, value]) => (
+                <div key={date}>
+                  <div className="mb-2 flex items-center justify-between text-sm text-slate-600">
+                    <span>{date}</span>
+                    <strong className="text-slate-900">{money(value)}</strong>
                   </div>
-                )) : <div className="empty-state min-h-[260px]"><div className="icon-soft-blue"><FileText size={26} /></div><h3 className="mt-4 text-lg font-semibold text-slate-900">Nenhum registro no período.</h3><p className="mt-2 text-sm text-slate-500">Ajuste os filtros para exibir o faturamento diário.</p></div>}
+                  <div className="h-3 rounded-full bg-slate-100">
+                    <div
+                      className="h-3 rounded-full bg-blue-600"
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          (value / Math.max(totals.totalRevenue || 1, 1)) * 100
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+              {!filtered.length ? (
+                <p className="text-sm text-slate-500">Nenhum registro no período.</p>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="panel-card p-6">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-slate-900">Transações recentes</h2>
+              <p className="text-sm text-slate-500">{filtered.length} encontradas</p>
+            </div>
+
+            <div className="table-shell mt-4 max-h-[560px] overflow-auto">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Cupom</th>
+                    <th>Placa</th>
+                    <th>Valor</th>
+                    <th>Pagamento</th>
+                    <th>Comprovante</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginated.length ? (
+                    paginated.map((ticket) => {
+                      const whatsappUrl = buildReceiptWhatsappUrl(
+                        ticket,
+                        settings?.name || 'Estacionamento'
+                      );
+
+                      return (
+                        <tr key={ticket.id}>
+                          <td>{shortDateTime(ticket.exitAt || ticket.entryAt)}</td>
+                          <td>{ticket.shortTicket}</td>
+                          <td>{ticket.plate || '-'}</td>
+                          <td>{money(ticket.amountCharged)}</td>
+                          <td>{ticket.paymentMethod || '-'}</td>
+                          <td>
+                            <div className="flex gap-2">
+                              <button
+                                className="secondary-button py-2"
+                                onClick={() => openPrintPage(`/print/saida/${ticket.id}`)}
+                              >
+                                <Printer size={16} />
+                              </button>
+                              <a
+                                className={`secondary-button py-2 ${
+                                  !whatsappUrl ? 'pointer-events-none opacity-50' : ''
+                                }`}
+                                href={whatsappUrl || '#'}
+                                target="_blank"
+                              >
+                                <MessageCircleMore size={16} />
+                              </a>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={6}>Nenhum registro</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-4 flex items-center justify-between">
+              <p className="text-sm text-slate-500">
+                Página {page} de {totalPages}
+              </p>
+              <div className="flex gap-3">
+                <button
+                  className="secondary-button py-2"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  Anterior
+                </button>
+                <button
+                  className="secondary-button py-2"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                >
+                  Próxima
+                </button>
               </div>
             </div>
-          </section>
-
-          <section className="panel-card overflow-hidden">
-            <div className="border-b border-slate-200/70 px-4 py-4 sm:px-6"><div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-lg font-semibold text-slate-900">Transações recentes</h2><p className="mt-1 text-sm text-slate-500">{filtered.length} transações encontradas com os filtros atuais.</p></div><div className="text-sm font-medium text-slate-500">Página {page} de {totalPages}</div></div></div>
-            <div className="hidden p-4 sm:p-6 lg:block"><div className="table-shell max-h-[560px] overflow-auto"><table><thead><tr><th>Data</th><th>Cupom</th><th>Placa</th><th>Valor</th><th>Pagamento</th><th>Comprovante</th></tr></thead><tbody>{paginated.length ? paginated.map((ticket) => { const whatsappUrl = buildReceiptWhatsappUrl(ticket, settings?.name || 'Estacionamento'); return <tr key={ticket.id}><td>{shortDateTime(ticket.exitAt || ticket.entryAt)}</td><td>{ticket.shortTicket}</td><td>{ticket.plate || '-'}</td><td>{money(ticket.amountCharged)}</td><td>{ticket.paymentMethod || '-'}</td><td><div className="flex gap-2"><button className="secondary-button py-2" onClick={() => openPrintPage(`/print/saida/${ticket.id}`)}><Printer size={16} /></button><a className={`secondary-button py-2 ${!whatsappUrl ? 'pointer-events-none opacity-50' : ''}`} href={whatsappUrl || '#'} target="_blank" rel="noreferrer"><MessageCircleMore size={16} /></a></div></td></tr>; }) : <tr><td colSpan={6}>Nenhum registro</td></tr>}</tbody></table></div></div>
-            <div className="space-y-3 p-4 sm:hidden">{paginated.length ? paginated.map((ticket) => { const whatsappUrl = buildReceiptWhatsappUrl(ticket, settings?.name || 'Estacionamento'); return <div key={ticket.id} className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold text-slate-900">Cupom {ticket.shortTicket}</p><p className="mt-1 text-sm text-slate-500">{shortDateTime(ticket.exitAt || ticket.entryAt)}</p></div><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase text-slate-700">{ticket.paymentMethod || '-'}</span></div><div className="mt-4 grid gap-2 text-sm text-slate-600"><div className="flex items-center justify-between gap-3"><span>Placa</span><strong className="text-slate-900">{ticket.plate || '-'}</strong></div><div className="flex items-center justify-between gap-3"><span>Valor</span><strong className="text-slate-900">{money(ticket.amountCharged)}</strong></div></div><div className="mt-4 grid grid-cols-2 gap-3"><button className="secondary-button w-full justify-center" onClick={() => openPrintPage(`/print/saida/${ticket.id}`)}><Printer size={16} />Imprimir</button><a className={`secondary-button w-full justify-center ${!whatsappUrl ? 'pointer-events-none opacity-50' : ''}`} href={whatsappUrl || '#'} target="_blank" rel="noreferrer"><MessageCircleMore size={16} />WhatsApp</a></div></div>; }) : <div className="empty-state min-h-[260px]"><div className="icon-soft-blue"><Search size={26} /></div><h3 className="mt-4 text-lg font-semibold text-slate-900">Nenhuma transação encontrada.</h3><p className="mt-2 text-sm text-slate-500">Tente alterar os filtros para localizar registros.</p></div>}</div>
-            <div className="border-t border-slate-200/70 px-4 py-4 sm:px-6"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><p className="text-sm text-slate-500">Exibindo {paginated.length} de {filtered.length} registros filtrados</p><div className="grid grid-cols-2 gap-3 sm:flex"><button className="secondary-button py-2" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Anterior</button><button className="secondary-button py-2" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Próxima</button></div></div></div>
-          </section>
+          </div>
         </div>
       </div>
     </RoleGuard>

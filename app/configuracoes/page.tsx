@@ -1,12 +1,10 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { MessageCircle } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import { db } from '@/lib/firebase';
-import { tenantDoc } from '@/lib/tenant';
-import { useAuth } from '@/contexts/AuthContext';
 import { EstablishmentSettings } from '@/types';
 
 const supportUrl = `https://api.whatsapp.com/send/?phone=5533999675619&text=${encodeURIComponent('Olá! Preciso de suporte no sistema SmartPark.')}`;
@@ -14,7 +12,6 @@ const supportUrl = `https://api.whatsapp.com/send/?phone=5533999675619&text=${en
 type PrinterWidth = '80mm' | '58mm';
 
 export default function ConfiguracoesPage() {
-  const { profile } = useAuth();
   const [settings, setSettings] = useState<EstablishmentSettings>({
     name: 'SmartPark',
     active: true,
@@ -28,7 +25,7 @@ export default function ConfiguracoesPage() {
 
   useEffect(() => {
     async function load() {
-      const ref = tenantDoc(db, profile?.tenantId, 'settings', 'establishment');
+      const ref = doc(db, 'settings', 'establishment');
       const snap = await getDoc(ref);
       if (snap.exists()) {
         setSettings((prev) => ({
@@ -40,11 +37,11 @@ export default function ConfiguracoesPage() {
       }
     }
     load();
-  }, [profile?.tenantId]);
+  }, []);
 
   async function saveSettings(event: FormEvent) {
     event.preventDefault();
-    await setDoc(tenantDoc(db, profile?.tenantId, 'settings', 'establishment'), settings, { merge: true });
+    await setDoc(doc(db, 'settings', 'establishment'), settings, { merge: true });
     setMessage('Configurações salvas com sucesso.');
   }
 

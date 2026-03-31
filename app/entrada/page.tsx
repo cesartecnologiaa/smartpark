@@ -1,12 +1,11 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { addDoc, getDoc, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
 import { Bike, Car, Clock3, MessageCircleMore, Printer, Truck, TruckIcon } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
-import { tenantCollection, tenantDoc } from '@/lib/tenant';
 import { openPrintPage } from '@/lib/print';
 import { CashRegister, EstablishmentSettings, ParkingSpace, ParkingTicket, VehicleType } from '@/types';
 import { phoneMask, plateMask } from '@/utils/format';
@@ -35,18 +34,18 @@ export default function EntradaPage() {
   const [createdTicket, setCreatedTicket] = useState<ParkingTicket | null>(null);
 
   useEffect(() => {
-    const unsubSpaces = onSnapshot(tenantCollection(db, profile?.tenantId, 'parkingSpaces'), (snapshot) => {
+    const unsubSpaces = onSnapshot(collection(db, 'parkingSpaces'), (snapshot) => {
       setSpaces(snapshot.docs.map((item) => ({ id: item.id, ...(item.data() as Omit<ParkingSpace, 'id'>) })));
     });
 
-    getDoc(tenantDoc(db, profile?.tenantId, 'settings', 'establishment')).then((snap) => {
+    getDoc(doc(db, 'settings', 'establishment')).then((snap) => {
       if (snap.exists()) setSettings(snap.data() as EstablishmentSettings);
     });
 
     if (!profile) return () => unsubSpaces();
 
     const unsubCash = onSnapshot(
-      query(tenantCollection(db, profile?.tenantId, 'cashRegisters'), where('status', '==', 'aberto'), where('operatorId', '==', profile.id)),
+      query(collection(db, 'cashRegisters'), where('status', '==', 'aberto'), where('operatorId', '==', profile.id)),
       (snapshot) => {
         const row = snapshot.docs[0];
         setOpenCashRegister(row ? { id: row.id, ...(row.data() as Omit<CashRegister, 'id'>) } : null);
@@ -83,7 +82,7 @@ export default function EntradaPage() {
 
     setLoading(true);
     try {
-      const shortTicket = await generateUniqueShortTicket(profile?.tenantId);
+      const shortTicket = await generateUniqueShortTicket();
       const selectedSpace = spaces.find((item) => item.id === selectedSpaceId);
 
       if (selectedSpace && selectedSpace.status !== 'livre') {
@@ -108,10 +107,10 @@ export default function EntradaPage() {
         parkingSpaceCode: selectedSpace?.code || '',
       };
 
-      const docRef = await addDoc(tenantCollection(db, profile?.tenantId, 'parkingTickets'), payload);
+      const docRef = await addDoc(collection(db, 'parkingTickets'), payload);
 
       if (selectedSpace) {
-        await updateDoc(tenantDoc(db, profile?.tenantId, 'parkingSpaces', selectedSpace.id), {
+        await updateDoc(doc(db, 'parkingSpaces', selectedSpace.id), {
           status: 'ocupada',
           currentTicketId: docRef.id,
           currentVehicleType: vehicleType,

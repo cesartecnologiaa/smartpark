@@ -1,12 +1,11 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { addDoc, onSnapshot, orderBy, query, updateDoc, where } from 'firebase/firestore';
+import { addDoc, collection, doc, onSnapshot, orderBy, query, updateDoc, where } from 'firebase/firestore';
 import { CircleDollarSign, Plus, Users } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
-import { tenantCollection, tenantDoc } from '@/lib/tenant';
 import { CashRegister, MonthlyCustomer, VehicleType } from '@/types';
 import { money, phoneMask, plateMask, shortDate, toInputNumber } from '@/utils/format';
 import { diffDaysFromNow } from '@/utils/parking';
@@ -28,11 +27,11 @@ export default function MensalistasPage() {
   const [openCashRegister, setOpenCashRegister] = useState<CashRegister | null>(null);
 
   useEffect(() => {
-    const unsubRows = onSnapshot(query(tenantCollection(db, profile?.tenantId, 'monthlyCustomers'), orderBy('name')), (snap) => {
+    const unsubRows = onSnapshot(query(collection(db, 'monthlyCustomers'), orderBy('name')), (snap) => {
       setRows(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<MonthlyCustomer, 'id'>) })));
     });
     if (!profile) return () => unsubRows();
-    const unsubCash = onSnapshot(query(tenantCollection(db, profile?.tenantId, 'cashRegisters'), where('status', '==', 'aberto'), where('operatorId', '==', profile.id)), (snap) => {
+    const unsubCash = onSnapshot(query(collection(db, 'cashRegisters'), where('status', '==', 'aberto'), where('operatorId', '==', profile.id)), (snap) => {
       const row = snap.docs[0];
       setOpenCashRegister(row ? { id: row.id, ...(row.data() as Omit<CashRegister, 'id'>) } : null);
     });
@@ -46,7 +45,7 @@ export default function MensalistasPage() {
 
   async function handleCreate(event: FormEvent) {
     event.preventDefault();
-    await addDoc(tenantCollection(db, profile?.tenantId, 'monthlyCustomers'), {
+    await addDoc(collection(db, 'monthlyCustomers'), {
       name,
       phone,
       plate: plateMask(plate),
@@ -71,8 +70,8 @@ export default function MensalistasPage() {
 
   async function registerPayment(customer: MonthlyCustomer) {
     if (!openCashRegister) return;
-    await updateDoc(tenantDoc(db, profile?.tenantId, 'monthlyCustomers', customer.id), { lastPaymentDate: new Date().toISOString() });
-    await updateDoc(tenantDoc(db, profile?.tenantId, 'cashRegisters', openCashRegister.id), { revenueByMonthly: (openCashRegister.revenueByMonthly || 0) + (customer.amount || 0) });
+    await updateDoc(doc(db, 'monthlyCustomers', customer.id), { lastPaymentDate: new Date().toISOString() });
+    await updateDoc(doc(db, 'cashRegisters', openCashRegister.id), { revenueByMonthly: (openCashRegister.revenueByMonthly || 0) + (customer.amount || 0) });
   }
 
   return (

@@ -9,10 +9,9 @@ import {
   useState,
 } from 'react';
 import { User, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { AppUser, UserRole } from '@/types';
-import { DEFAULT_TENANT_ID, normalizeTenantId } from '@/lib/tenant';
 
 interface AuthContextType {
   firebaseUser: User | null;
@@ -41,43 +40,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const profileRef = doc(db, 'users', user.uid);
       const profileSnap = await getDoc(profileRef);
-
       if (profileSnap.exists()) {
-        const rawProfile = profileSnap.data() as Omit<AppUser, 'id'>;
-        const loadedProfile: AppUser = {
-          id: profileSnap.id,
-          ...rawProfile,
-          tenantId: normalizeTenantId(rawProfile.tenantId),
-        };
-
-        if (!rawProfile.tenantId) {
-          await updateDoc(profileRef, { tenantId: DEFAULT_TENANT_ID });
-        }
-
+        const loadedProfile = { id: profileSnap.id, ...(profileSnap.data() as Omit<AppUser, 'id'>) };
         if (loadedProfile.active === false) {
           await signOut(auth);
           setProfile(null);
         } else {
           setProfile(loadedProfile);
-          if (typeof window !== 'undefined') {
-            window.localStorage.setItem('smartpark:tenantId', loadedProfile.tenantId || DEFAULT_TENANT_ID);
-          }
         }
       } else {
-        const isolatedTenantId = user.uid;
-        const bootstrappedProfile: Omit<AppUser, 'id'> = {
-          name: user.displayName || user.email?.split('@')[0] || 'Administrador',
-          email: user.email || '',
-          role: 'admin',
-          active: true,
-          createdAt: new Date().toISOString(),
-          tenantId: isolatedTenantId,
-        };
-        await setDoc(profileRef, bootstrappedProfile, { merge: true });
-        setProfile({ id: user.uid, ...bootstrappedProfile });
-        if (typeof window !== 'undefined') {
-          window.localStorage.setItem('smartpark:tenantId', isolatedTenantId);
-        }
+        setProfile(null);
       }
       setLoading(false);
     });

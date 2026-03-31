@@ -8,11 +8,8 @@ import PageHeader from '@/components/PageHeader';
 import RoleGuard from '@/components/RoleGuard';
 import { db, getSecondaryApp } from '@/lib/firebase';
 import { AppUser, UserRole } from '@/types';
-import { DEFAULT_TENANT_ID } from '@/lib/tenant';
-import { useAuth } from '@/contexts/AuthContext';
 
 export default function UsuariosPage() {
-  const { profile } = useAuth();
   const [rows, setRows] = useState<AppUser[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
@@ -31,13 +28,7 @@ export default function UsuariosPage() {
     return () => unsub();
   }, []);
 
-  const tenantUsers = useMemo(() => rows.filter((user) => {
-    const userTenantId = user.tenantId || DEFAULT_TENANT_ID;
-    const profileTenantId = profile?.tenantId || DEFAULT_TENANT_ID;
-    return userTenantId === profileTenantId;
-  }), [profile?.tenantId, rows]);
-
-  const filtered = useMemo(() => tenantUsers.filter((user) => filter === 'Todos' ? true : filter === 'Ativos' ? user.active !== false : user.active === false), [filter, tenantUsers]);
+  const filtered = useMemo(() => rows.filter((user) => filter === 'Todos' ? true : filter === 'Ativos' ? user.active !== false : user.active === false), [filter, rows]);
 
   async function handleCreate(event: FormEvent) {
     event.preventDefault();
@@ -45,7 +36,7 @@ export default function UsuariosPage() {
     try {
       const secondaryAuth = getAuth(getSecondaryApp());
       const credential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
-      await setDoc(doc(db, 'users', credential.user.uid), { name, email, role, active: true, createdAt: new Date().toISOString(), tenantId: profile?.tenantId || DEFAULT_TENANT_ID });
+      await setDoc(doc(db, 'users', credential.user.uid), { name, email, role, active: true, createdAt: new Date().toISOString() });
       await signOutSecondary(secondaryAuth);
       setName(''); setEmail(''); setPassword(''); setRole('vendedor'); setShowForm(false);
       setMessage('Usuário criado com sucesso.');
@@ -67,7 +58,7 @@ export default function UsuariosPage() {
     <RoleGuard roles={['admin']}>
       <div>
         <PageHeader title="Usuários do Estabelecimento" subtitle="Gerencie usuários, permissões e acessos" actions={<button className="primary-button" onClick={() => setShowForm((v) => !v)}><Plus size={16} />Novo Funcionário</button>} />
-        <div className="mb-6 flex flex-wrap gap-3">{(['Todos', 'Ativos', 'Inativos'] as const).map((item) => <button key={item} className={`pill-tab ${filter === item ? 'pill-tab-active' : ''}`} onClick={() => setFilter(item)}>{item}</button>)}<span className="pill-tab">{tenantUsers.length} usuários</span></div>
+        <div className="mb-6 flex flex-wrap gap-3">{(['Todos', 'Ativos', 'Inativos'] as const).map((item) => <button key={item} className={`pill-tab ${filter === item ? 'pill-tab-active' : ''}`} onClick={() => setFilter(item)}>{item}</button>)}<span className="pill-tab">{rows.length} usuários</span></div>
 
         {showForm ? <div className="panel-card mb-6 p-6"><h2 className="text-lg font-semibold text-slate-900">Novo Funcionário</h2><form className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-5" onSubmit={handleCreate}><input className="app-input" placeholder="Nome" value={name} onChange={(e) => setName(e.target.value)} required /><input className="app-input" type="email" placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} required /><input className="app-input" type="password" placeholder="Senha" value={password} onChange={(e) => setPassword(e.target.value)} required /><select className="app-input" value={role} onChange={(e) => setRole(e.target.value as UserRole)}><option value="admin">Administrador</option><option value="vendedor">Vendedor</option></select><div className="flex gap-3"><button className="primary-button" type="submit">Salvar</button><button className="secondary-button" type="button" onClick={() => setShowForm(false)}>Cancelar</button></div></form></div> : null}
         {message ? <p className="mb-4 text-sm text-blue-700">{message}</p> : null}

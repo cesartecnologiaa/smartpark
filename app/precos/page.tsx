@@ -1,13 +1,11 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { onSnapshot, setDoc } from 'firebase/firestore';
+import { collection, doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { Tag } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import RoleGuard from '@/components/RoleGuard';
 import { db } from '@/lib/firebase';
-import { tenantCollection, tenantDoc } from '@/lib/tenant';
-import { useAuth } from '@/contexts/AuthContext';
 import { PriceSetting, VehicleType } from '@/types';
 import { money, toInputNumber } from '@/utils/format';
 
@@ -56,12 +54,11 @@ function Field({
 }
 
 export default function PrecosPage() {
-  const { profile } = useAuth();
   const [rows, setRows] = useState<PriceSetting[]>(baseRows);
   const [editing, setEditing] = useState<PriceSetting | null>(null);
 
   useEffect(() => {
-    const unsub = onSnapshot(tenantCollection(db, profile?.tenantId, 'priceSettings'), (snap) => {
+    const unsub = onSnapshot(collection(db, 'priceSettings'), (snap) => {
       if (snap.empty) return setRows(baseRows);
 
       const items = snap.docs.map((d) => ({
@@ -79,13 +76,13 @@ export default function PrecosPage() {
     });
 
     return () => unsub();
-  }, [profile?.tenantId]);
+  }, []);
 
   async function handleSave(event: FormEvent) {
     event.preventDefault();
     if (!editing) return;
 
-    await setDoc(tenantDoc(db, profile?.tenantId, 'priceSettings', editing.vehicleType), {
+    await setDoc(doc(db, 'priceSettings', editing.vehicleType), {
       ...editing,
       updatedAt: new Date().toISOString(),
       active: true,

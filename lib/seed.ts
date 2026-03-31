@@ -1,6 +1,5 @@
-import { getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { tenantDoc } from '@/lib/tenant';
 import { PriceSetting, VehicleType } from '@/types';
 
 const defaults: Record<VehicleType, Omit<PriceSetting, 'id'>> = {
@@ -10,12 +9,12 @@ const defaults: Record<VehicleType, Omit<PriceSetting, 'id'>> = {
   CAMINHAO: { vehicleType: 'CAMINHAO', valorHora: 22, valorAdicional: 15, tolerancia: 0 },
 };
 
-export async function seedPriceSettings(tenantId?: string | null, force = false) {
+export async function seedPriceSettings(force = false) {
   const entries = Object.values(defaults);
 
   await Promise.all(
     entries.map(async (row) => {
-      const ref = tenantDoc(db, tenantId, 'priceSettings', row.vehicleType);
+      const ref = doc(db, 'priceSettings', row.vehicleType);
       const snap = await getDoc(ref);
       if (!force && snap.exists()) return;
       await setDoc(ref, {

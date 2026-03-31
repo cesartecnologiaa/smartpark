@@ -1,11 +1,9 @@
 'use client';
 
-import { getDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import QRCode from 'qrcode';
 import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
 import { db } from '@/lib/firebase';
-import { tenantDoc } from '@/lib/tenant';
 import { EstablishmentSettings, ParkingTicket } from '@/types';
 import { shortDate, shortTime } from '@/utils/format';
 
@@ -19,8 +17,6 @@ const vehicleLabel = (type: ParkingTicket['vehicleType']) =>
     : 'Carro';
 
 export default function PrintEntradaPage({ params }: { params: { id: string } }) {
-  const searchParams = useSearchParams();
-  const tenantId = searchParams.get('tenant');
   const [ticket, setTicket] = useState<ParkingTicket | null>(null);
   const [settings, setSettings] = useState<EstablishmentSettings | null>(null);
   const [qr, setQr] = useState('');
@@ -28,8 +24,8 @@ export default function PrintEntradaPage({ params }: { params: { id: string } })
   useEffect(() => {
     async function load() {
       const [ticketSnap, settingsSnap] = await Promise.all([
-        getDoc(tenantDoc(db, tenantId, 'parkingTickets', params.id)),
-        getDoc(tenantDoc(db, tenantId, 'settings', 'establishment')),
+        getDoc(doc(db, 'parkingTickets', params.id)),
+        getDoc(doc(db, 'settings', 'establishment')),
       ]);
 
       if (ticketSnap.exists()) {
@@ -64,7 +60,7 @@ export default function PrintEntradaPage({ params }: { params: { id: string } })
     }
 
     load();
-  }, [params.id, tenantId]);
+  }, [params.id]);
 
   const is58 = (settings?.printerWidth || '80mm') === '58mm';
 

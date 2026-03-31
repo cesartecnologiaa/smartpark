@@ -1,16 +1,13 @@
 'use client';
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { addDoc, deleteDoc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { MapPin, Plus } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import { db } from '@/lib/firebase';
-import { tenantCollection, tenantDoc } from '@/lib/tenant';
 import { ParkingSpace, VehicleType } from '@/types';
 
 export default function VagasPage() {
-  const { profile } = useAuth();
   const [rows, setRows] = useState<ParkingSpace[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [showBatch, setShowBatch] = useState(false);
@@ -22,13 +19,13 @@ export default function VagasPage() {
   const [sectionFilter, setSectionFilter] = useState('Todas');
 
   useEffect(() => {
-    const unsub = onSnapshot(tenantCollection(db, profile?.tenantId, 'parkingSpaces'), (snap) => {
+    const unsub = onSnapshot(collection(db, 'parkingSpaces'), (snap) => {
       const items = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ParkingSpace, 'id'>) }));
       items.sort((a, b) => a.code.localeCompare(b.code, 'pt-BR', { numeric: true }));
       setRows(items);
     });
     return () => unsub();
-  }, [profile?.tenantId]);
+  }, []);
 
   const stats = useMemo(() => ({
     total: rows.length,
@@ -42,7 +39,7 @@ export default function VagasPage() {
 
   async function createSpace(event: FormEvent) {
     event.preventDefault();
-    await addDoc(tenantCollection(db, profile?.tenantId, 'parkingSpaces'), {
+    await addDoc(collection(db, 'parkingSpaces'), {
       code,
       section,
       allowedType,
@@ -61,7 +58,7 @@ export default function VagasPage() {
   async function createBatch() {
     const total = Number(quantity || 0);
     for (let i = 1; i <= total; i += 1) {
-      await addDoc(tenantCollection(db, profile?.tenantId, 'parkingSpaces'), {
+      await addDoc(collection(db, 'parkingSpaces'), {
         code: `${prefix}${i}`,
         section: `Seção ${prefix}`,
         allowedType: 'TODOS',
@@ -78,12 +75,12 @@ export default function VagasPage() {
   async function toggleInactive(space: ParkingSpace) {
     if (space.status === 'ocupada') return;
     const nextStatus = space.status === 'inativa' ? 'livre' : 'inativa';
-    await updateDoc(tenantDoc(db, profile?.tenantId, 'parkingSpaces', space.id), { status: nextStatus, active: nextStatus !== 'inativa', updatedAt: new Date().toISOString() });
+    await updateDoc(doc(db, 'parkingSpaces', space.id), { status: nextStatus, active: nextStatus !== 'inativa', updatedAt: new Date().toISOString() });
   }
 
   async function removeSpace(space: ParkingSpace) {
     if (space.status === 'ocupada') return;
-    await deleteDoc(tenantDoc(db, profile?.tenantId, 'parkingSpaces', space.id));
+    await deleteDoc(doc(db, 'parkingSpaces', space.id));
   }
 
   return (
