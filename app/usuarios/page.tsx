@@ -1,9 +1,10 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { createUserWithEmailAndPassword, getAuth, sendPasswordResetEmail, signOut as signOutSecondary } from 'firebase/auth';
 import { collection, doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
-import { ExternalLink, KeyRound, Plus, ShieldCheck, Trash2, Users, X } from 'lucide-react';
+import { ExternalLink, KeyRound, Plus, ShieldCheck, Trash2, Users } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import PageHeader from '@/components/PageHeader';
 import RoleGuard from '@/components/RoleGuard';
 import { auth, db, getSecondaryApp } from '@/lib/firebase';
@@ -32,6 +33,8 @@ export default function UsuariosPage() {
   const [filter, setFilter] = useState<'Todos' | 'Ativos' | 'Inativos'>('Todos');
   const [openActionFor, setOpenActionFor] = useState<string | null>(null);
   const [busyAction, setBusyAction] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'users'), (snap) => {
@@ -59,6 +62,46 @@ export default function UsuariosPage() {
       ),
     [filter, tenantUsers]
   );
+
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent) {
+      if (!openActionFor) return;
+      const target = event.target as Node | null;
+      if (menuRef.current && target && menuRef.current.contains(target)) return;
+      setOpenActionFor(null);
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpenActionFor(null);
+    }
+
+    if (openActionFor) {
+      document.addEventListener('mousedown', handlePointerDown);
+      document.addEventListener('keydown', handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [openActionFor]);
+
+  function openActionsMenu(event: React.MouseEvent<HTMLButtonElement>, userId: string) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const menuWidth = 220;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    const left = Math.min(Math.max(12, rect.right - menuWidth), viewportWidth - menuWidth - 12);
+    let top = rect.bottom + 10;
+
+    if (top + 180 > viewportHeight) {
+      top = Math.max(12, rect.top - 164);
+    }
+
+    setMenuPosition({ top, left });
+    setOpenActionFor((current) => (current === userId ? null : userId));
+  }
 
   async function handleCreate(event: FormEvent) {
     event.preventDefault();
@@ -139,57 +182,65 @@ export default function UsuariosPage() {
 
   function renderActionsMenu(user: AppUser) {
     const isOpen = openActionFor === user.id;
+
     return (
-      <div className="relative">
+      <>
         <button
           type="button"
           className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-blue-300 hover:text-blue-600"
-          onClick={() => setOpenActionFor((current) => (current === user.id ? null : user.id))}
+          onClick={(event) => openActionsMenu(event, user.id)}
           aria-label={`Abrir ações de ${user.name}`}
         >
           <ExternalLink size={18} />
         </button>
 
-        {isOpen ? (
-          <>
-            <button
-              type="button"
-              className="fixed inset-0 z-30 bg-transparent"
-              onClick={() => setOpenActionFor(null)}
-              aria-label="Fechar ações"
-            />
-            <div className="absolute right-0 top-14 z-40 min-w-[220px] rounded-3xl border border-slate-200 bg-white/95 p-2 shadow-2xl backdrop-blur">
-              <button
-                type="button"
-                className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100"
-                onClick={() => handleChangeRole(user)}
-                disabled={busyAction === `role-${user.id}`}
-              >
-                <ShieldCheck size={16} />
-                <span>Cargo</span>
-              </button>
-              <button
-                type="button"
-                className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100"
-                onClick={() => handlePasswordReset(user)}
-                disabled={busyAction === `password-${user.id}`}
-              >
-                <KeyRound size={16} />
-                <span>Alterar senha</span>
-              </button>
-              <button
-                type="button"
-                className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-rose-600 transition hover:bg-rose-50"
-                onClick={() => handleDeleteUser(user)}
-                disabled={busyAction === `delete-${user.id}`}
-              >
-                <Trash2 size={16} />
-                <span>Excluir usuário</span>
-              </button>
-            </div>
-          </>
-        ) : null}
-      </div>
+        {isOpen && menuPosition && typeof document !== 'undefined'
+          ? createPortal(
+              <>
+                <button
+                  type="button"
+                  className="fixed inset-0 z-[9998] bg-black/5 backdrop-blur-[1px]"
+                  onClick={() => setOpenActionFor(null)}
+                  aria-label="Fechar ações"
+                />
+                <div
+                  ref={menuRef}
+                  className="fixed z-[9999] min-w-[220px] rounded-3xl border border-slate-200 bg-white/95 p-2 shadow-2xl backdrop-blur"
+                  style={{ top: menuPosition.top, left: menuPosition.left }}
+                >
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                    onClick={() => handleChangeRole(user)}
+                    disabled={busyAction === `role-${user.id}`}
+                  >
+                    <ShieldCheck size={16} />
+                    <span>Cargo</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                    onClick={() => handlePasswordReset(user)}
+                    disabled={busyAction === `password-${user.id}`}
+                  >
+                    <KeyRound size={16} />
+                    <span>Alterar senha</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-sm font-medium text-rose-600 transition hover:bg-rose-50"
+                    onClick={() => handleDeleteUser(user)}
+                    disabled={busyAction === `delete-${user.id}`}
+                  >
+                    <Trash2 size={16} />
+                    <span>Excluir usuário</span>
+                  </button>
+                </div>
+              </>,
+              document.body
+            )
+          : null}
+      </>
     );
   }
 
@@ -270,75 +321,79 @@ export default function UsuariosPage() {
 
         {filtered.length ? (
           <>
-            <div className="space-y-3 lg:hidden">
+            <div className="space-y-4 lg:hidden">
               {filtered.map((user) => (
-                <article key={user.id} className="rounded-3xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
+                <article key={user.id} className="panel-card p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <h3 className="truncate text-base font-semibold text-slate-900">{user.name}</h3>
                       <p className="mt-1 break-all text-sm text-slate-500">{user.email}</p>
                     </div>
-                    {renderActionsMenu(user)}
+                    <div className="icon-soft-blue shrink-0">
+                      <ShieldCheck size={18} />
+                    </div>
                   </div>
 
-                  <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                    <div>
-                      <span className="block text-slate-500">Cargo</span>
-                      <strong className="mt-1 block text-slate-900">{roleLabel(user.role)}</strong>
+                  <div className="mt-4 grid gap-3 rounded-[20px] border border-slate-200 bg-slate-50/70 p-3 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-slate-500">Cargo</span>
+                      <strong className="text-right text-slate-900">{roleLabel(user.role)}</strong>
                     </div>
-                    <div>
-                      <span className="block text-slate-500">Status</span>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-slate-500">Status</span>
                       <span
-                        className={`mt-1 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                          user.active === false ? 'bg-slate-100 text-slate-700' : 'bg-emerald-100 text-emerald-700'
+                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                          user.active === false ? 'bg-slate-200 text-slate-700' : 'bg-emerald-100 text-emerald-700'
                         }`}
                       >
                         {user.active === false ? 'Inativo' : 'Ativo'}
                       </span>
                     </div>
                   </div>
+
+                  <div className="mt-4 flex items-center justify-end">
+                    {renderActionsMenu(user)}
+                  </div>
                 </article>
               ))}
             </div>
 
-            <div className="hidden lg:block">
-              <div className="overflow-visible rounded-[24px] border border-slate-200 bg-white">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full border-collapse">
-                    <thead className="bg-slate-50">
-                      <tr>
-                        <th className="border-b border-slate-100 px-4 py-3 text-left text-sm font-semibold text-slate-500">Nome</th>
-                        <th className="border-b border-slate-100 px-4 py-3 text-left text-sm font-semibold text-slate-500">E-mail</th>
-                        <th className="border-b border-slate-100 px-4 py-3 text-left text-sm font-semibold text-slate-500">Cargo</th>
-                        <th className="border-b border-slate-100 px-4 py-3 text-left text-sm font-semibold text-slate-500">Status</th>
-                        <th className="border-b border-slate-100 px-4 py-3 text-right text-sm font-semibold text-slate-500">Ações</th>
+            <div className="panel-card hidden p-6 lg:block">
+              <div className="table-shell">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Nome</th>
+                      <th>E-mail</th>
+                      <th>Cargo</th>
+                      <th>Status</th>
+                      <th>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((user) => (
+                      <tr key={user.id}>
+                        <td>{user.name}</td>
+                        <td>{user.email}</td>
+                        <td>{roleLabel(user.role)}</td>
+                        <td>
+                          <span
+                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                              user.active === false ? 'bg-slate-100 text-slate-700' : 'bg-emerald-100 text-emerald-700'
+                            }`}
+                          >
+                            {user.active === false ? 'Inativo' : 'Ativo'}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="flex items-center justify-end">
+                            {renderActionsMenu(user)}
+                          </div>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {filtered.map((user) => (
-                        <tr key={user.id}>
-                          <td className="border-b border-slate-100 px-4 py-3 text-sm text-slate-700">{user.name}</td>
-                          <td className="border-b border-slate-100 px-4 py-3 text-sm text-slate-700">{user.email}</td>
-                          <td className="border-b border-slate-100 px-4 py-3 text-sm text-slate-700">{roleLabel(user.role)}</td>
-                          <td className="border-b border-slate-100 px-4 py-3 text-sm text-slate-700">
-                            <span
-                              className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                                user.active === false ? 'bg-slate-100 text-slate-700' : 'bg-emerald-100 text-emerald-700'
-                              }`}
-                            >
-                              {user.active === false ? 'Inativo' : 'Ativo'}
-                            </span>
-                          </td>
-                          <td className="border-b border-slate-100 px-4 py-3 text-right text-sm text-slate-700">
-                            <div className="relative inline-flex items-center justify-end">
-                              {renderActionsMenu(user)}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           </>
