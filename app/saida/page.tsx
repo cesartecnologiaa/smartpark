@@ -57,6 +57,7 @@ const searchModeOptions: Array<{ key: SearchMode; label: string; description: st
 export default function SaidaPage() {
   const { profile } = useAuth();
   const [mode, setMode] = useState<SearchMode>('qr');
+  const [qrAutoStart, setQrAutoStart] = useState(false);
   const [search, setSearch] = useState('');
   const [tickets, setTickets] = useState<ParkingTicket[]>([]);
   const [spaces, setSpaces] = useState<ParkingSpace[]>([]);
@@ -153,12 +154,17 @@ export default function SaidaPage() {
         const payload = JSON.parse(decodedText) as { ticketId?: string; shortTicket?: string; plate?: string };
         if (payload.ticketId) {
           const found = tickets.find((item) => item.id === payload.ticketId);
-          if (found) return previewTicket(found);
+          if (found) {
+            setQrAutoStart(false);
+            return previewTicket(found);
+          }
         }
         if (payload.shortTicket) setSearch(payload.shortTicket);
         if (payload.plate) setSearch(payload.plate);
+        setQrAutoStart(false);
       } catch {
         setSearch(decodedText);
+        setQrAutoStart(false);
       }
     },
     [previewTicket, tickets]
@@ -224,7 +230,10 @@ export default function SaidaPage() {
           <button
             key={item.key}
             type="button"
-            onClick={() => setMode(item.key)}
+            onClick={() => {
+              setMode(item.key);
+              setQrAutoStart(item.key === 'qr');
+            }}
             className={`selection-card items-start text-left ${mode === item.key ? 'selection-card-active' : ''}`}
           >
             <div className="icon-soft-blue">{item.icon}</div>
@@ -238,31 +247,33 @@ export default function SaidaPage() {
 
       <div className="mt-6 grid gap-6 2xl:grid-cols-[minmax(0,1.2fr),minmax(320px,420px)]">
         <div className="space-y-6">
-          <section className="panel-card overflow-hidden">
-            <div className="border-b border-slate-200/70 px-4 py-4 sm:px-6">
-              <div className="flex items-start gap-3">
-                <div className="icon-soft-blue">{mode === 'qr' ? <ScanQrCode size={18} /> : <Search size={18} />}</div>
-                <div>
-                  <h2 className="text-base font-semibold text-slate-900">
-                    {mode === 'qr'
-                      ? 'Leitura de QR Code'
-                      : mode === 'codigo'
-                        ? 'Busca por código do ticket'
-                        : 'Busca por placa'}
-                  </h2>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {mode === 'qr'
-                      ? 'Aponte a câmera para o QR do cupom para localizar rapidamente o veículo.'
-                      : mode === 'codigo'
+          {mode === 'qr' ? (
+            <section className="space-y-4">
+              <QrScanner onRead={handleQrRead} autoStart={qrAutoStart} variant="inline" />
+              <div className="rounded-[22px] border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-500">
+                A câmera abre diretamente por este card. Ao localizar o QR Code, o ticket será carregado automaticamente.
+              </div>
+            </section>
+          ) : (
+            <section className="panel-card overflow-hidden">
+              <div className="border-b border-slate-200/70 px-4 py-4 sm:px-6">
+                <div className="flex items-start gap-3">
+                  <div className="icon-soft-blue">
+                    <Search size={18} />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-semibold text-slate-900">
+                      {mode === 'codigo' ? 'Busca por código do ticket' : 'Busca por placa'}
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {mode === 'codigo'
                         ? 'Digite o código do ticket para localizar o veículo e calcular a saída.'
                         : 'Informe a placa para localizar o veículo ativo no pátio.'}
-                  </p>
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="p-4 sm:p-6">
-              {mode === 'qr' ? <QrScanner onRead={handleQrRead} /> : null}
-              {mode !== 'qr' ? (
+              <div className="p-4 sm:p-6">
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-slate-700">
                     {mode === 'codigo' ? 'Código do ticket' : 'Placa do veículo'}
@@ -276,9 +287,9 @@ export default function SaidaPage() {
                     placeholder={mode === 'codigo' ? 'Ex: 1234' : 'ABC1234'}
                   />
                 </div>
-              ) : null}
-            </div>
-          </section>
+              </div>
+            </section>
+          )}
 
           <section className="panel-card overflow-hidden">
             <div className="border-b border-slate-200/70 px-4 py-4 sm:px-6">
