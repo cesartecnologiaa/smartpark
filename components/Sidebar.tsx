@@ -64,7 +64,7 @@ export default function Sidebar() {
     <>
       {!open ? (
         <button
-          className="primary-outline fixed right-3 top-3 z-50 lg:hidden"
+          className="primary-outline fixed left-4 top-[max(16px,env(safe-area-inset-top))] z-50 lg:hidden"
           type="button"
           aria-label="Abrir menu"
           onClick={() => setOpen(true)}
