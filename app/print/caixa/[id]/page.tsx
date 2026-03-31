@@ -7,107 +7,280 @@ import { db } from '@/lib/firebase';
 import { tenantDoc } from '@/lib/tenant';
 import { CashRegister, EstablishmentSettings } from '@/types';
 import { money, shortDateTime } from '@/utils/format';
-import { buildStyles, basePrintStyles } from '@/lib/printStyles';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+function isAndroid() {
+  return typeof window !== 'undefined' && /Android/i.test(window.navigator.userAgent || '');
+}
 
 export default function PrintCaixaPage({ params }: { params: { id: string } }) {
   const searchParams = useSearchParams();
   const tenantId = searchParams.get('tenant');
-  const printMode = searchParams.get('printMode');
-  const autoPrint = searchParams.get('autoPrint') !== '0';
   const returnTo = searchParams.get('returnTo');
+  const printMode = searchParams.get('printMode');
+  const autoPrint = searchParams.get('autoPrint') === '1';
   const [cash, setCash] = useState<CashRegister | null>(null);
   const [settings, setSettings] = useState<EstablishmentSettings | null>(null);
-  const [loaded, setLoaded] = useState(false);
-  const startedRef = useRef(false); const blurredRef = useRef(false); const finishedRef = useRef(false);
+  const [readyToPrint, setReadyToPrint] = useState(false);
+  const [printRequested, setPrintRequested] = useState(false);
+  const hasNavigatedRef = useRef(false);
 
-  useEffect(() => { (async () => {
-    const [cashSnap, settingsSnap] = await Promise.all([
-      getDoc(tenantDoc(db, tenantId, 'cashRegisters', params.id)),
-      getDoc(tenantDoc(db, tenantId, 'settings', 'establishment')),
-    ]);
-    if (cashSnap.exists()) setCash({ id: cashSnap.id, ...(cashSnap.data() as Omit<CashRegister, 'id'>) });
-    if (settingsSnap.exists()) setSettings(settingsSnap.data() as EstablishmentSettings);
-    setLoaded(true);
-  })(); }, [params.id, tenantId]);
+  const isRawbtAndroid = printMode === 'rawbt' && isAndroid();
+  const is58 = (settings?.printerWidth || '80mm') === '58mm';
+
+  const styles = useMemo(
+    () => ({
+      previewWidth: is58 ? '260px' : '360px',
+      printWidth: is58 ? '58mm' : '80mm',
+      padding: is58 ? '2.5mm 2.2mm 2.8mm' : '4mm 3.5mm 3.5mm',
+      companyFont: is58 ? '18px' : '22px',
+      companySub: is58 ? '11px' : '13px',
+      metaFont: is58 ? '10px' : '12px',
+      subtitle: is58 ? '14px' : '16px',
+      rowFont: is58 ? '12px' : '14px',
+      footerFont: is58 ? '10px' : '12px',
+      cutHeight: is58 ? '20px' : '28px',
+    }),
+    [is58]
+  );
 
   useEffect(() => {
-    document.documentElement.classList.add('print-route-active');
-    document.body.classList.add('print-route-active');
-    return () => {
-      document.documentElement.classList.remove('print-route-active');
-      document.body.classList.remove('print-route-active');
-    };
-  }, []);
+    let active = true;
 
-  useEffect(() => {
-    if (!autoPrint || !loaded || !cash || startedRef.current) return;
+    async function load() {
+      const [cashSnap, settingsSnap] = await Promise.all([
+        getDoc(tenantDoc(db, tenantId, 'cashRegisters', params.id)),
+        getDoc(tenantDoc(db, tenantId, 'settings', 'establishment')),
+      ]);
 
-    const finish = () => {
-      if (finishedRef.current) return;
-      finishedRef.current = true;
-      if (printMode === 'rawbt') {
-        if (returnTo) window.location.replace(returnTo);
-        else window.history.back();
-        return;
+      if (!active) return;
+
+      if (cashSnap.exists()) {
+        setCash({ id: cashSnap.id, ...(cashSnap.data() as Omit<CashRegister, 'id'>) });
       }
-      try { window.close(); } catch (_) {}
-      window.setTimeout(() => {
-        if (!window.closed) {
-          if (returnTo) window.location.replace(returnTo);
-          else window.history.back();
-        }
-      }, 400);
-    };
 
-    const handleAfterPrint = () => finish();
-    const handleBlur = () => { blurredRef.current = true; };
-    const handleFocus = () => { if (startedRef.current && blurredRef.current) window.setTimeout(finish, 350); };
+      setSettings(settingsSnap.exists() ? (settingsSnap.data() as EstablishmentSettings) : null);
+    }
+
+    load();
+    return () => {
+      active = false;
+    };
+  }, [params.id, tenantId]);
+
+  useEffect(() => {
+    if (!cash || !settings) return;
+    const timer = window.setTimeout(() => setReadyToPrint(true), 300);
+    return () => window.clearTimeout(timer);
+  }, [cash, settings]);
+
+  useEffect(() => {
+    if (!autoPrint || !readyToPrint || isRawbtAndroid) return;
+    const timer = window.setTimeout(() => {
+      setPrintRequested(true);
+      window.print();
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [autoPrint, readyToPrint, isRawbtAndroid]);
+
+  useEffect(() => {
+    function goBack() {
+      if (hasNavigatedRef.current) return;
+      hasNavigatedRef.current = true;
+      if (returnTo) {
+        window.location.replace(returnTo);
+      } else {
+        window.history.back();
+      }
+    }
+
+    function handleAfterPrint() {
+      if (isRawbtAndroid) return;
+      goBack();
+    }
+
+    function handleVisibility() {
+      if (!printRequested || !isRawbtAndroid) return;
+      if (document.visibilityState === 'visible') {
+        window.setTimeout(goBack, 180);
+      }
+    }
 
     window.addEventListener('afterprint', handleAfterPrint);
-    window.addEventListener('blur', handleBlur);
-    window.addEventListener('focus', handleFocus);
-
-    const raf1 = window.requestAnimationFrame(() => { window.requestAnimationFrame(() => { window.setTimeout(() => { startedRef.current = true; window.print(); }, 300); }); });
-
+    document.addEventListener('visibilitychange', handleVisibility);
     return () => {
-      window.cancelAnimationFrame(raf1);
       window.removeEventListener('afterprint', handleAfterPrint);
-      window.removeEventListener('blur', handleBlur);
-      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
-  }, [autoPrint, cash, loaded, printMode, returnTo]);
+  }, [printRequested, returnTo, isRawbtAndroid]);
+
+  function handlePrintClick() {
+    setPrintRequested(true);
+    window.print();
+  }
 
   const sangrias = useMemo(() => cash?.withdrawals?.reduce((sum, item) => sum + item.amount, 0) || 0, [cash]);
   const saldo = cash ? cash.openingAmount + cash.revenueByTickets + cash.revenueByMonthly - sangrias : 0;
-  const is58 = (settings?.printerWidth || '80mm') === '58mm';
-  const styles = useMemo(() => buildStyles(is58), [is58]);
 
-  if (!cash || !loaded) return <><div className="print-ticket-page"><div className="print-ticket print-ticket-loading">Preparando cupom...</div></div><style>{basePrintStyles(styles, is58)}</style></>;
+  if (!cash || !settings) {
+    return (
+      <div className="print-shell">
+        <div className="print-ticket">
+          <div className="print-loading">Preparando cupom...</div>
+        </div>
+        <style>{buildStyles(styles)}</style>
+      </div>
+    );
+  }
 
   return (
     <>
-      <div className="print-ticket-page">
-        <div className="print-ticket">
-          <div className="ticket-header">
-            <div className="ticket-company">{settings?.name || 'SmartPark'}</div>
-            {settings?.address ? <div className="ticket-company-sub">{settings.address}</div> : null}
-            {settings?.phone || settings?.document ? <div className="ticket-company-meta">{settings?.phone ? <span>Tel: {settings.phone}</span> : null}{settings?.document ? <span>CNPJ: {settings.document}</span> : null}</div> : null}
+      <div className="print-shell">
+        {isRawbtAndroid ? (
+          <div className="print-actions no-print">
+            <button type="button" className="print-button" onClick={handlePrintClick} disabled={!readyToPrint}>
+              Imprimir cupom
+            </button>
           </div>
-          <div className="ticket-dashed" />
-          <div className="ticket-subtitle">Fechamento de Caixa</div>
-          <div className="ticket-row"><span className="ticket-row-label">Operador:</span><span className="ticket-row-value">{cash.operatorName}</span></div>
-          <div className="ticket-row"><span className="ticket-row-label">Abertura:</span><span className="ticket-row-value">{shortDateTime(cash.openedAt)}</span></div>
-          <div className="ticket-row"><span className="ticket-row-label">Fechamento:</span><span className="ticket-row-value">{shortDateTime(cash.closedAt)}</span></div>
-          <div className="ticket-row"><span className="ticket-row-label">Valor Inicial:</span><span className="ticket-row-value">{money(cash.openingAmount)}</span></div>
-          <div className="ticket-row"><span className="ticket-row-label">Faturamento:</span><span className="ticket-row-value">{money(cash.revenueByTickets + cash.revenueByMonthly)}</span></div>
-          <div className="ticket-row"><span className="ticket-row-label">Sangrias:</span><span className="ticket-row-value">{money(sangrias)}</span></div>
-          <div className="ticket-row"><span className="ticket-row-label">Saldo Final:</span><span className="ticket-row-value">{money(saldo)}</span></div>
-          <div className="ticket-dashed" />
-          <div className="ticket-footer">{settings?.ticketFooter ? <p>{settings.ticketFooter}</p> : null}<p>Documento de fechamento do caixa.</p></div>
-          <div className="cut-space" />
+        ) : null}
+
+        <div className="print-ticket-page">
+          <div className="print-ticket">
+            <div className="ticket-header">
+              <div className="ticket-company">{settings.name || 'SmartPark'}</div>
+              {settings.address ? <div className="ticket-company-sub">{settings.address}</div> : null}
+              {settings.phone || settings.document ? (
+                <div className="ticket-company-meta">
+                  {settings.phone ? <span>Tel: {settings.phone}</span> : null}
+                  {settings.document ? <span>CNPJ: {settings.document}</span> : null}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="ticket-dashed" />
+            <div className="ticket-subtitle">Fechamento de Caixa</div>
+            <div className="ticket-row"><span className="ticket-row-label">Operador:</span><span className="ticket-row-value">{cash.operatorName}</span></div>
+            <div className="ticket-row"><span className="ticket-row-label">Abertura:</span><span className="ticket-row-value">{shortDateTime(cash.openedAt)}</span></div>
+            <div className="ticket-row"><span className="ticket-row-label">Fechamento:</span><span className="ticket-row-value">{shortDateTime(cash.closedAt)}</span></div>
+            <div className="ticket-row"><span className="ticket-row-label">Valor inicial:</span><span className="ticket-row-value">{money(cash.openingAmount)}</span></div>
+            <div className="ticket-row"><span className="ticket-row-label">Faturamento:</span><span className="ticket-row-value">{money(cash.revenueByTickets + cash.revenueByMonthly)}</span></div>
+            <div className="ticket-row"><span className="ticket-row-label">Sangrias:</span><span className="ticket-row-value">{money(sangrias)}</span></div>
+            <div className="ticket-row"><span className="ticket-row-label">Saldo final:</span><span className="ticket-row-value">{money(saldo)}</span></div>
+
+            <div className="ticket-dashed" />
+            <div className="ticket-footer">
+              {settings.ticketFooter ? <p>{settings.ticketFooter}</p> : null}
+              <p>Documento de fechamento do caixa.</p>
+            </div>
+            <div className="cut-space" />
+          </div>
         </div>
       </div>
-      <style>{basePrintStyles(styles, is58)}</style>
+
+      <style>{buildStyles(styles)}</style>
     </>
   );
+}
+
+type PrintStyleMap = {
+  previewWidth: string;
+  printWidth: string;
+  padding: string;
+  companyFont: string;
+  companySub: string;
+  metaFont: string;
+  subtitle: string;
+  rowFont: string;
+  footerFont: string;
+  cutHeight: string;
+};
+
+function buildStyles(styles: PrintStyleMap) {
+  return `
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      background: #ffffff;
+      overflow-x: hidden;
+      color: #111827;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .print-shell {
+      width: 100%;
+      background: #ffffff;
+      padding: 12px;
+      box-sizing: border-box;
+    }
+
+    .print-actions {
+      width: 100%;
+      max-width: ${styles.previewWidth};
+      margin: 0 auto 12px;
+    }
+
+    .print-button {
+      width: 100%;
+      border: 0;
+      border-radius: 14px;
+      background: #0f172a;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      padding: 14px 16px;
+    }
+
+    .print-button:disabled { opacity: 0.55; }
+    .print-ticket-page { display: block; width: 100%; margin: 0; padding: 0; background: #ffffff; }
+    .print-ticket { width: 100%; max-width: ${styles.previewWidth}; margin: 0 auto; background: #fff; color: #111827; padding: ${styles.padding}; box-sizing: border-box; }
+    .print-loading { text-align: center; padding: 24px 12px; font-size: 14px; }
+    .ticket-header { text-align: center; margin-bottom: 10px; }
+    .ticket-company { font-size: ${styles.companyFont}; font-weight: 700; line-height: 1.1; margin-bottom: 6px; }
+    .ticket-company-sub { font-size: ${styles.companySub}; line-height: 1.35; margin-bottom: 4px; }
+    .ticket-company-meta { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; font-size: ${styles.metaFont}; }
+    .ticket-dashed { border-top: 1px dashed #94a3b8; margin: 10px 0; }
+    .ticket-subtitle { text-align: center; font-size: ${styles.subtitle}; font-weight: 700; margin: 6px 0 12px; }
+    .ticket-row { display: flex; justify-content: space-between; gap: 10px; margin: 6px 0; font-size: ${styles.rowFont}; line-height: 1.35; }
+    .ticket-row-label { font-weight: 600; }
+    .ticket-row-value { font-weight: 700; text-align: right; }
+    .ticket-footer { text-align: center; font-size: ${styles.footerFont}; line-height: 1.35; }
+    .ticket-footer p { margin: 0 0 4px; }
+    .cut-space { height: ${styles.cutHeight}; }
+
+    @media print {
+      @page {
+        size: ${styles.printWidth} auto;
+        margin: 0;
+      }
+
+      html, body {
+        width: ${styles.printWidth};
+        min-height: auto !important;
+        height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        overflow: visible !important;
+      }
+
+      .no-print { display: none !important; }
+      .print-shell, .print-ticket-page, .print-ticket {
+        width: ${styles.printWidth} !important;
+        max-width: ${styles.printWidth} !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+        box-shadow: none !important;
+      }
+
+      .print-ticket {
+        padding: ${styles.padding} !important;
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+    }
+  `;
 }

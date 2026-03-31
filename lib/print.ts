@@ -8,6 +8,11 @@ function isAndroidDevice() {
   return /Android/i.test(window.navigator.userAgent || '');
 }
 
+function buildReturnTo() {
+  if (typeof window === 'undefined') return '';
+  return `${window.location.pathname}${window.location.search}${window.location.hash}`;
+}
+
 export function openPrintPage(path: string) {
   if (typeof window === 'undefined') return;
 
@@ -21,27 +26,20 @@ export function openPrintPage(path: string) {
     url.searchParams.set('tenant', tenantId);
   }
 
-  // ── RawBT flow (Android thermal printer app) ─────────────────────────────
+  url.searchParams.set('t', String(Date.now()));
+  url.searchParams.set('returnTo', buildReturnTo());
+
   if (useRawBtFlow) {
     url.searchParams.set('printMode', 'rawbt');
-    url.searchParams.set('autoPrint', '1');
-    url.searchParams.set('returnTo', `${window.location.pathname}${window.location.search}${window.location.hash}`);
+    url.searchParams.set('autoPrint', '0');
     window.location.assign(`${url.pathname}${url.search}${url.hash}`);
     return;
   }
 
-  // ── Android browser flow ──────────────────────────────────────────────────
-  // Android blocks window.open() popups. We navigate the current tab to the
-  // print page and pass returnTo so the page can navigate back after printing.
-  if (isAndroid) {
-    url.searchParams.set('autoPrint', '1');
-    url.searchParams.set('returnTo', `${window.location.pathname}${window.location.search}${window.location.hash}`);
-    window.location.assign(`${url.pathname}${url.search}${url.hash}`);
-    return;
-  }
+  url.searchParams.set('autoPrint', isAndroid ? '0' : '1');
 
-  // ── Desktop popup flow ────────────────────────────────────────────────────
   const finalPath = `${url.pathname}${url.search}${url.hash}`;
+
   const popup = window.open(
     finalPath,
     'smartpark-print-popup',
@@ -49,8 +47,7 @@ export function openPrintPage(path: string) {
   );
 
   if (!popup) {
-    // Popup blocked on desktop too — open in new tab as last resort
-    window.open(finalPath, '_blank', 'noopener,noreferrer');
+    window.location.assign(finalPath);
     return;
   }
 
