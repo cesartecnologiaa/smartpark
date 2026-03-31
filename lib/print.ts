@@ -22,18 +22,17 @@ export function openPrintPage(path: string) {
 
   if (useRawBtFlow) {
     url.searchParams.set('printMode', 'rawbt');
-    url.searchParams.set('autoPrint', '0');
+  }
+
+  url.searchParams.set('autoPrint', '1');
+  if (!url.searchParams.get('returnTo')) {
+    url.searchParams.set(
+      'returnTo',
+      `${window.location.pathname}${window.location.search}${window.location.hash}` || '/'
+    );
   }
 
   const finalPath = `${url.pathname}${url.search}${url.hash}`;
-
-  if (useRawBtFlow) {
-    const rawBtWindow = window.open(finalPath, '_blank', 'noopener,noreferrer');
-    if (!rawBtWindow) {
-      window.location.assign(finalPath);
-    }
-    return;
-  }
 
   const popup = window.open(
     finalPath,
@@ -42,7 +41,7 @@ export function openPrintPage(path: string) {
   );
 
   if (!popup) {
-    window.open(finalPath, '_blank', 'noopener,noreferrer');
+    window.location.assign(finalPath);
     return;
   }
 

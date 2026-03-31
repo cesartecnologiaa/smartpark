@@ -8,50 +8,73 @@ import { tenantDoc } from '@/lib/tenant';
 import { CashRegister, EstablishmentSettings } from '@/types';
 import { money, shortDateTime } from '@/utils/format';
 
-const RawbtToolbar = ({ onPrint, onShare, canShare }: { onPrint: () => void; onShare: () => void; canShare: boolean }) => (
-  <div className="rawbt-toolbar">
-    <div>
-      <strong>Modo Android / RAWBT</strong>
-      <p>Use imprimir para enviar o cupom à bobina térmica. Se preferir, compartilhe o link do cupom com o RAWBT.</p>
-    </div>
-    <div className="rawbt-actions">
-      <button type="button" onClick={onPrint}>Imprimir</button>
-      {canShare ? <button type="button" onClick={onShare}>Compartilhar</button> : null}
-    </div>
-  </div>
-);
+function startAutoPrint(returnTo: string) {
+  let finalized = false;
+  let sawHidden = false;
+
+  const finalize = () => {
+    if (finalized) return;
+    finalized = true;
+
+    try {
+      window.close();
+    } catch {}
+
+    window.setTimeout(() => {
+      try {
+        window.close();
+      } catch {}
+
+      if (typeof window !== 'undefined' && !window.closed) {
+        window.location.replace(returnTo || '/');
+      }
+    }, 180);
+  };
+
+  const handleAfterPrint = () => {
+    window.setTimeout(finalize, 120);
+  };
+
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === 'hidden') {
+      sawHidden = true;
+      return;
+    }
+
+    if (sawHidden) {
+      window.setTimeout(finalize, 180);
+    }
+  };
+
+  const handleFocus = () => {
+    if (sawHidden) {
+      window.setTimeout(finalize, 180);
+    }
+  };
+
+  window.addEventListener('afterprint', handleAfterPrint);
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+  window.addEventListener('focus', handleFocus);
+
+  window.setTimeout(() => {
+    window.print();
+  }, 350);
+
+  window.setTimeout(() => {
+    window.removeEventListener('afterprint', handleAfterPrint);
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
+    window.removeEventListener('focus', handleFocus);
+  }, 60000);
+}
 
 export default function PrintCaixaPage({ params }: { params: { id: string } }) {
   const searchParams = useSearchParams();
   const tenantId = searchParams.get('tenant');
-  const printMode = searchParams.get('printMode');
+  const returnTo = searchParams.get('returnTo') || '/';
   const autoPrint = searchParams.get('autoPrint') !== '0';
   const [cash, setCash] = useState<CashRegister | null>(null);
   const [settings, setSettings] = useState<EstablishmentSettings | null>(null);
 
-
-  const canShare = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent || '') && typeof navigator.share === 'function';
-
-  function handlePrintClick() {
-    window.print();
-  }
-
-  async function handleShareClick() {
-    if (!canShare) return;
-
-    try {
-      await navigator.share({
-        title: 'Cupom SmartPark',
-        text: 'Abrir cupom SmartPark no RAWBT',
-        url: window.location.href,
-      });
-    } catch (error) {
-      const shareError = error as { name?: string } | undefined;
-      if (shareError?.name !== 'AbortError') {
-        handlePrintClick();
-      }
-    }
-  }
 
   useEffect(() => {
     async function load() {
@@ -69,13 +92,12 @@ export default function PrintCaixaPage({ params }: { params: { id: string } }) {
       }
 
       if (autoPrint) {
-        setTimeout(() => window.print(), 350);
-        window.onafterprint = () => window.close();
+        startAutoPrint(returnTo);
       }
     }
 
     load();
-  }, [autoPrint, params.id, tenantId]);
+  }, [autoPrint, params.id, returnTo, tenantId]);
 
   const sangrias = useMemo(
     () => cash?.withdrawals?.reduce((sum, item) => sum + item.amount, 0) || 0,
@@ -105,18 +127,14 @@ export default function PrintCaixaPage({ params }: { params: { id: string } }) {
 
   if (!cash) {
     return (
-      <>
-        {printMode === 'rawbt' ? <RawbtToolbar onPrint={handlePrintClick} onShare={handleShareClick} canShare={canShare} /> : null}
-        <div className="print-ticket-page">
+      <div className="print-ticket-page">
         <div className="print-ticket">Carregando...</div>
       </div>
-      </>
     );
   }
 
   return (
     <>
-      {printMode === 'rawbt' ? <RawbtToolbar onPrint={handlePrintClick} onShare={handleShareClick} canShare={canShare} /> : null}
       <div className="print-ticket-page">
         <div className="print-ticket">
           <div className="ticket-header">
