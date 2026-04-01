@@ -101,7 +101,7 @@ export default function PrintEntradaPage({ params }: { params: { id: string } })
       if (ticketSnap.exists()) {
         const data = { id: ticketSnap.id, ...(ticketSnap.data() as Omit<ParkingTicket, 'id'>) };
         setTicket(data);
-        const width = settingsSnap.exists() && (settingsSnap.data() as EstablishmentSettings).printerWidth === '58mm' ? 160 : 220;
+        const width = settingsSnap.exists() && (settingsSnap.data() as EstablishmentSettings).printerWidth === '58mm' ? 180 : 220;
         const qrUrl = await QRCode.toDataURL(JSON.stringify({ ticketId: data.id, shortTicket: data.shortTicket, plate: data.plate || '' }), { width, margin: 1 });
         setQr(qrUrl);
       }
@@ -139,15 +139,15 @@ export default function PrintEntradaPage({ params }: { params: { id: string } })
   const styles = useMemo(() => ({
     pageWidth: is58 ? '58mm' : '80mm',
     padding: is58 ? '1.4mm 1.15mm 1.5mm' : '4mm 3.5mm 3mm',
-    companyFont: is58 ? '3.45mm' : '5.6mm',
-    companySub: is58 ? '1.85mm' : '2.9mm',
-    metaFont: is58 ? '1.72mm' : '2.8mm',
-    labelTop: is58 ? '2.2mm' : '3.8mm',
-    codeFont: is58 ? '7.1mm' : '12mm',
-    subtitle: is58 ? '2.75mm' : '4.3mm',
-    rowFont: is58 ? '2.32mm' : '4.3mm',
-    footerFont: is58 ? '1.68mm' : '2.6mm',
-    qrSize: is58 ? '20mm' : '31mm',
+    companyFont: is58 ? '4.1mm' : '5.6mm',
+    companySub: is58 ? '2.25mm' : '2.9mm',
+    metaFont: is58 ? '2.05mm' : '2.8mm',
+    labelTop: is58 ? '2.6mm' : '3.8mm',
+    codeFont: is58 ? '7.9mm' : '12mm',
+    subtitle: is58 ? '3.25mm' : '4.3mm',
+    rowFont: is58 ? '2.8mm' : '4.3mm',
+    footerFont: is58 ? '1.95mm' : '2.6mm',
+    qrSize: is58 ? '22mm' : '31mm',
     cutHeight: is58 ? '6mm' : '14mm',
   }), [is58]);
 

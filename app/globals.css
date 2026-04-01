@@ -4,6 +4,8 @@
 
 :root {
   color-scheme: light;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 * {
@@ -18,12 +20,23 @@ body {
   background: linear-gradient(180deg, #f6f8fc 0%, #eef3f9 100%);
   color: #0f172a;
   width: 100%;
-  overflow-x: hidden;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 body {
   font-family: Arial, Helvetica, sans-serif;
 }
+
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
 
 a {
   color: inherit;
@@ -74,11 +87,11 @@ textarea {
   }
 
   .app-input {
-    @apply h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100;
+    @apply h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 sm:text-sm;
   }
 
   .app-textarea {
-    @apply min-h-[100px] w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100;
+    @apply min-h-[100px] w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 sm:text-sm;
   }
 
   .pill-tab {
@@ -171,6 +184,18 @@ textarea {
   50% {
     box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
   }
+}
+
+
+.app-shell,
+.app-shell-inner,
+.app-main-area,
+.app-content,
+.panel-card,
+.table-shell,
+.sidebar-shell {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .app-shell {
@@ -484,5 +509,19 @@ textarea {
     bottom: 24px;
     padding: 14px 18px;
     font-size: 14px;
+  }
+}
+
+@media (max-width: 639px) {
+  .table-shell {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .secondary-button,
+  .primary-button,
+  .primary-outline {
+    max-width: 100%;
+    white-space: normal;
   }
 }

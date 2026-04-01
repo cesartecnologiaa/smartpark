@@ -3,13 +3,12 @@
 import { getDoc } from 'firebase/firestore';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { X } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { tenantDoc } from '@/lib/tenant';
 import { CashRegister, EstablishmentSettings } from '@/types';
 import { money, shortDateTime } from '@/utils/format';
 
-const RawbtToolbar = ({ onPrint, onClose }: { onPrint: () => void; onClose: () => void }) => (
+const RawbtToolbar = ({ onPrint }: { onPrint: () => void }) => (
   <div className="rawbt-toolbar">
     <div>
       <strong>Modo Android / RAWBT</strong>
@@ -17,7 +16,6 @@ const RawbtToolbar = ({ onPrint, onClose }: { onPrint: () => void; onClose: () =
     </div>
     <div className="rawbt-actions">
       <button type="button" onClick={onPrint}>Imprimir</button>
-      <button type="button" onClick={onClose} className="bg-slate-600 hover:bg-slate-700"><X size={16} />Fechar</button>
     </div>
   </div>
 );
@@ -104,19 +102,19 @@ export default function PrintCaixaPage({ params }: { params: { id: string } }) {
   const styles = useMemo(() => ({
     pageWidth: is58 ? '58mm' : '80mm',
     padding: is58 ? '1.4mm 1.15mm 1.5mm' : '4mm 3.5mm 3mm',
-    companyFont: is58 ? '3.45mm' : '5.6mm',
-    companySub: is58 ? '1.85mm' : '2.9mm',
-    metaFont: is58 ? '1.72mm' : '2.8mm',
-    subtitle: is58 ? '2.75mm' : '4.3mm',
-    rowFont: is58 ? '2.32mm' : '4.3mm',
-    footerFont: is58 ? '1.68mm' : '2.6mm',
+    companyFont: is58 ? '4.1mm' : '5.6mm',
+    companySub: is58 ? '2.25mm' : '2.9mm',
+    metaFont: is58 ? '2.05mm' : '2.8mm',
+    subtitle: is58 ? '3.25mm' : '4.3mm',
+    rowFont: is58 ? '2.8mm' : '4.3mm',
+    footerFont: is58 ? '1.95mm' : '2.6mm',
     cutHeight: is58 ? '6mm' : '14mm',
   }), [is58]);
 
   if (!cash) {
     return (
       <>
-        {printMode === 'rawbt' ? <RawbtToolbar onPrint={handlePrintClick} onClose={finish} /> : null}
+        {printMode === 'rawbt' ? <RawbtToolbar onPrint={handlePrintClick} /> : null}
         <div className="print-ticket-page"><div className="print-ticket">Carregando...</div></div>
       </>
     );
@@ -124,7 +122,7 @@ export default function PrintCaixaPage({ params }: { params: { id: string } }) {
 
   return (
     <>
-      {printMode === 'rawbt' ? <RawbtToolbar onPrint={handlePrintClick} onClose={finish} /> : null}
+      {printMode === 'rawbt' ? <RawbtToolbar onPrint={handlePrintClick} /> : null}
       <div className="print-ticket-page">
         <div className="print-ticket">
           <div className="ticket-header">
