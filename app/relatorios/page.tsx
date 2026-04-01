@@ -28,18 +28,16 @@ export default function RelatoriosPage() {
   const [page, setPage] = useState(1);
 
   useEffect(() => {
-    if (!profile) return;
-
-    const unsub = onSnapshot(tenantCollection(db, profile.tenantId, 'parkingTickets'), (snap) => {
+    const unsub = onSnapshot(tenantCollection(db, profile?.tenantId, 'parkingTickets'), (snap) => {
       setTickets(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ParkingTicket, 'id'>) })));
     });
 
-    getDoc(tenantDoc(db, profile.tenantId, 'settings', 'establishment')).then((snap) => {
+    getDoc(tenantDoc(db, profile?.tenantId, 'settings', 'establishment')).then((snap) => {
       if (snap.exists()) setSettings(snap.data() as EstablishmentSettings);
     });
 
     return () => unsub();
-  }, [profile]);
+  }, [profile?.tenantId]);
 
   const filtered = useMemo(() => {
     return tickets
@@ -81,7 +79,7 @@ export default function RelatoriosPage() {
           acc[key] = (acc[key] || 0) + (item.amountCharged || 0);
           return acc;
         }, {})
-      ).sort((a, b) => b[0].localeCompare(a[0])),
+      ),
     [filtered]
   );
 
@@ -183,20 +181,37 @@ export default function RelatoriosPage() {
       pdf.setFontSize(9);
       pdf.setTextColor(...BLACK);
       pdf.text(label, marginX, posY);
+
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(60, 60, 60);
       pdf.text(value || '-', marginX + 34, posY);
     }
 
-    function summaryBox(x: number, top: number, w: number, h: number, title: string, value: string, highlight = false) {
+    function summaryBox(
+      x: number,
+      top: number,
+      w: number,
+      h: number,
+      title: string,
+      value: string,
+      highlight = false
+    ) {
       pdf.setDrawColor(...BORDER);
       pdf.setLineWidth(0.2);
-      pdf.setFillColor(...(highlight ? ([239, 246, 255] as [number, number, number]) : LIGHT));
+
+      if (highlight) {
+        pdf.setFillColor(239, 246, 255);
+      } else {
+        pdf.setFillColor(...LIGHT);
+      }
+
       pdf.roundedRect(x, top, w, h, 3, 3, 'FD');
+
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(8);
       pdf.setTextColor(...GRAY);
       pdf.text(title, x + 4, top + 7);
+
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(highlight ? 13 : 12);
       pdf.setTextColor(...(highlight ? BLUE : BLACK));
@@ -204,20 +219,26 @@ export default function RelatoriosPage() {
     }
 
     drawBlueTopBar();
+
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(18);
     pdf.setTextColor(...BLACK);
     pdf.text('SmartPark', marginX, y);
+
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(9.5);
     pdf.setTextColor(...GRAY);
     pdf.text('Relatório Financeiro e Operacional', marginX, y + 5);
+
     y += 13;
+
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(12);
     pdf.setTextColor(...BLACK);
     pdf.text(companyName, marginX, y);
+
     y += 5;
+
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(9);
     pdf.setTextColor(75, 85, 99);
@@ -249,26 +270,33 @@ export default function RelatoriosPage() {
 
     sectionTitle('Resumo geral');
     ensureSpace(32);
+
     const boxY = y;
     const gap = 4;
     const boxWidth = (pageWidth - marginX * 2 - gap) / 2;
+
     summaryBox(marginX, boxY, boxWidth, 20, 'Faturamento Total', money(totals.totalRevenue), true);
     summaryBox(marginX + boxWidth + gap, boxY, boxWidth, 20, 'Total de Veículos', String(totals.totalVehicles));
+
     summaryBox(marginX, boxY + 24, boxWidth, 20, 'Saídas Realizadas', String(totals.exits));
     summaryBox(marginX + boxWidth + gap, boxY + 24, boxWidth, 20, 'Ticket Médio', money(totals.ticketAverage));
+
     y += 52;
 
     sectionTitle('Faturamento diário');
     if (dailySummary.length) {
       dailySummary.slice(0, 12).forEach(([date, value]) => {
         ensureSpace(6);
+
         pdf.setFont('helvetica', 'normal');
         pdf.setFontSize(9);
         pdf.setTextColor(55, 65, 81);
         pdf.text(date, marginX, y);
+
         pdf.setFont('helvetica', 'bold');
         pdf.setTextColor(...BLACK);
         pdf.text(money(value), pageWidth - marginX, y, { align: 'right' });
+
         y += 5.5;
       });
     } else {
@@ -282,14 +310,20 @@ export default function RelatoriosPage() {
 
     y += 2;
     sectionTitle('Transações');
+
     ensureSpace(12);
     pdf.setFillColor(...LIGHT);
     pdf.setDrawColor(...BORDER);
     pdf.rect(marginX, y, pageWidth - marginX * 2, 8, 'FD');
+
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(8);
     pdf.setTextColor(71, 85, 105);
-    tableHeaders.forEach((header, index) => pdf.text(header, colX[index], y + 5.4));
+
+    tableHeaders.forEach((header, index) => {
+      pdf.text(header, colX[index], y + 5.4);
+    });
+
     y += 10;
 
     if (!filtered.length) {
@@ -301,16 +335,27 @@ export default function RelatoriosPage() {
     } else {
       filtered.forEach((item) => {
         ensureSpace(9);
+
         drawLine(y - 1.5);
+
         pdf.setFont('helvetica', 'normal');
         pdf.setFontSize(8.2);
         pdf.setTextColor(31, 41, 55);
-        pdf.text(shortDateTime(item.exitAt || item.entryAt), colX[0], y + 3.5, { maxWidth: 28 });
-        pdf.text(String(item.shortTicket || '-'), colX[1], y + 3.5, { maxWidth: 20 });
-        pdf.text(String(item.plate || '-'), colX[2], y + 3.5, { maxWidth: 22 });
-        pdf.text(String(item.vehicleType || '-'), colX[3], y + 3.5, { maxWidth: 34 });
-        pdf.text(money(item.amountCharged || 0), colX[4], y + 3.5, { maxWidth: 22 });
-        pdf.text(String(item.paymentMethod || '-'), colX[5], y + 3.5, { maxWidth: 28 });
+
+        const data = shortDateTime(item.exitAt || item.entryAt);
+        const cupom = String(item.shortTicket || '-');
+        const placa = String(item.plate || '-');
+        const tipo = String(item.vehicleType || '-');
+        const valor = money(item.amountCharged || 0);
+        const pagamento = String(item.paymentMethod || '-');
+
+        pdf.text(data, colX[0], y + 3.5, { maxWidth: 28 });
+        pdf.text(cupom, colX[1], y + 3.5, { maxWidth: 20 });
+        pdf.text(placa, colX[2], y + 3.5, { maxWidth: 22 });
+        pdf.text(tipo, colX[3], y + 3.5, { maxWidth: 34 });
+        pdf.text(valor, colX[4], y + 3.5, { maxWidth: 22 });
+        pdf.text(pagamento, colX[5], y + 3.5, { maxWidth: 28 });
+
         y += rowHeight;
       });
     }
@@ -328,17 +373,17 @@ export default function RelatoriosPage() {
 
   return (
     <RoleGuard roles={['admin']}>
-      <div className="space-y-6">
+      <div>
         <PageHeader
           title="Relatórios"
           subtitle="Análise financeira e operacional"
           actions={
             <>
-              <button className="secondary-button w-full justify-center sm:w-auto" onClick={exportCsv}>
+              <button className="secondary-button" onClick={exportCsv}>
                 <Download size={16} />
                 Exportar CSV
               </button>
-              <button className="primary-button w-full justify-center sm:w-auto" onClick={exportPdf}>
+              <button className="primary-button" onClick={exportPdf}>
                 <FileText size={16} />
                 Exportar PDF
               </button>
@@ -346,158 +391,108 @@ export default function RelatoriosPage() {
           }
         />
 
-        <div className="panel-card p-4 sm:p-6">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900">Filtros do período</h2>
-              <p className="mt-1 text-sm text-slate-500">Ajuste rapidamente a consulta e exporte os resultados.</p>
+        <div className="panel-card mb-6 p-6">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <input
+              className="app-input"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+            <input
+              className="app-input"
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+            <select
+              className="app-input"
+              value={paymentFilter}
+              onChange={(e) => setPaymentFilter(e.target.value as 'todos' | PaymentMethod)}
+            >
+              <option value="todos">Todas as formas</option>
+              <option value="dinheiro">Dinheiro</option>
+              <option value="pix">PIX</option>
+              <option value="cartao">Cartão</option>
+              <option value="mensalista">Mensalista</option>
+            </select>
+            <div className="relative">
+              <Search
+                className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                size={18}
+              />
+              <input
+                className="app-input pl-11"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar por número do cupom ou placa"
+              />
             </div>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <label className="space-y-2">
-              <span className="text-sm font-medium text-slate-600">Data inicial</span>
-              <input className="app-input" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-            </label>
-            <label className="space-y-2">
-              <span className="text-sm font-medium text-slate-600">Data final</span>
-              <input className="app-input" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-            </label>
-            <label className="space-y-2">
-              <span className="text-sm font-medium text-slate-600">Forma de pagamento</span>
-              <select className="app-input" value={paymentFilter} onChange={(e) => setPaymentFilter(e.target.value as 'todos' | PaymentMethod)}>
-                <option value="todos">Todas as formas</option>
-                <option value="dinheiro">Dinheiro</option>
-                <option value="pix">PIX</option>
-                <option value="cartao">Cartão</option>
-                <option value="mensalista">Mensalista</option>
-              </select>
-            </label>
-            <label className="space-y-2">
-              <span className="text-sm font-medium text-slate-600">Buscar cupom ou placa</span>
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input
-                  className="app-input pl-11"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Ex.: 1234 ou ABC1D23"
-                />
-              </div>
-            </label>
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard title="Faturamento Total" value={money(totals.totalRevenue)} icon={<Download size={20} />} />
-          <StatCard title="Total de Veículos" value={String(totals.totalVehicles)} icon={<Printer size={20} />} tone="green" />
-          <StatCard title="Saídas Realizadas" value={String(totals.exits)} icon={<Printer size={20} />} tone="red" />
-          <StatCard title="Ticket Médio" value={money(totals.ticketAverage)} icon={<MessageCircleMore size={20} />} tone="slate" />
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            title="Faturamento Total"
+            value={money(totals.totalRevenue)}
+            icon={<Download size={20} />}
+          />
+          <StatCard
+            title="Total de Veículos"
+            value={String(totals.totalVehicles)}
+            icon={<Printer size={20} />}
+            tone="green"
+          />
+          <StatCard
+            title="Saídas Realizadas"
+            value={String(totals.exits)}
+            icon={<Printer size={20} />}
+            tone="red"
+          />
+          <StatCard
+            title="Ticket Médio"
+            value={money(totals.ticketAverage)}
+            icon={<MessageCircleMore size={20} />}
+            tone="slate"
+          />
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-[0.95fr,1.05fr]">
-          <div className="panel-card p-4 sm:p-6">
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">Faturamento diário</h2>
-                <p className="mt-1 text-sm text-slate-500">Resumo por dia com base nas saídas finalizadas.</p>
-              </div>
-              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                {dailySummary.length} dias
-              </span>
-            </div>
-
-            <div className="space-y-3">
-              {dailySummary.length ? (
-                dailySummary.map(([date, value]) => (
-                  <div key={date} className="rounded-2xl border border-slate-100 bg-slate-50/80 p-3">
-                    <div className="mb-2 flex items-center justify-between gap-3 text-sm text-slate-600">
-                      <span className="font-medium text-slate-700">{date}</span>
-                      <strong className="text-slate-900">{money(value)}</strong>
-                    </div>
-                    <div className="h-2.5 rounded-full bg-slate-200/80">
-                      <div
-                        className="h-2.5 rounded-full bg-blue-600"
-                        style={{ width: `${Math.min(100, (value / Math.max(totals.totalRevenue || 1, 1)) * 100)}%` }}
-                      />
-                    </div>
+        <div className="mt-6 grid gap-6 xl:grid-cols-[0.95fr,1.05fr]">
+          <div className="panel-card p-6">
+            <h2 className="text-lg font-semibold text-slate-900">Faturamento Diário</h2>
+            <div className="mt-4 space-y-4">
+              {dailySummary.map(([date, value]) => (
+                <div key={date}>
+                  <div className="mb-2 flex items-center justify-between text-sm text-slate-600">
+                    <span>{date}</span>
+                    <strong className="text-slate-900">{money(value)}</strong>
                   </div>
-                ))
-              ) : (
+                  <div className="h-3 rounded-full bg-slate-100">
+                    <div
+                      className="h-3 rounded-full bg-blue-600"
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          (value / Math.max(totals.totalRevenue || 1, 1)) * 100
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+              {!filtered.length ? (
                 <p className="text-sm text-slate-500">Nenhum registro no período.</p>
-              )}
+              ) : null}
             </div>
           </div>
 
-          <div className="panel-card p-4 sm:p-6">
-            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">Transações</h2>
-                <p className="mt-1 text-sm text-slate-500">Tickets finalizados dentro do filtro atual.</p>
-              </div>
-              <p className="text-sm font-medium text-slate-500">{filtered.length} encontradas</p>
+          <div className="panel-card p-6">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-slate-900">Transações recentes</h2>
+              <p className="text-sm text-slate-500">{filtered.length} encontradas</p>
             </div>
 
-            <div className="space-y-3 md:hidden">
-              {paginated.length ? (
-                paginated.map((ticket) => {
-                  const whatsappUrl = buildReceiptWhatsappUrl(ticket, settings?.name || 'Estacionamento');
-                  return (
-                    <div key={ticket.id} className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Cupom</p>
-                          <h3 className="mt-1 text-lg font-semibold text-slate-900">#{ticket.shortTicket}</h3>
-                        </div>
-                        <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600">
-                          {ticket.paymentMethod || '-'}
-                        </span>
-                      </div>
-
-                      <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                        <div className="rounded-2xl bg-white p-3">
-                          <p className="text-xs font-medium text-slate-400">Data</p>
-                          <p className="mt-1 font-semibold text-slate-800">{shortDateTime(ticket.exitAt || ticket.entryAt)}</p>
-                        </div>
-                        <div className="rounded-2xl bg-white p-3">
-                          <p className="text-xs font-medium text-slate-400">Placa</p>
-                          <p className="mt-1 font-semibold text-slate-800">{ticket.plate || '-'}</p>
-                        </div>
-                        <div className="rounded-2xl bg-white p-3">
-                          <p className="text-xs font-medium text-slate-400">Tipo</p>
-                          <p className="mt-1 font-semibold text-slate-800">{ticket.vehicleType}</p>
-                        </div>
-                        <div className="rounded-2xl bg-white p-3">
-                          <p className="text-xs font-medium text-slate-400">Valor</p>
-                          <p className="mt-1 font-semibold text-slate-800">{money(ticket.amountCharged)}</p>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 grid grid-cols-2 gap-3">
-                        <button className="secondary-button w-full justify-center" onClick={() => openPrintPage(`/print/saida/${ticket.id}`)}>
-                          <Printer size={16} />
-                          Imprimir
-                        </button>
-                        <a
-                          className={`secondary-button w-full justify-center ${!whatsappUrl ? 'pointer-events-none opacity-50' : ''}`}
-                          href={whatsappUrl || '#'}
-                          target="_blank"
-                        >
-                          <MessageCircleMore size={16} />
-                          WhatsApp
-                        </a>
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500">
-                  Nenhum registro encontrado.
-                </div>
-              )}
-            </div>
-
-            <div className="table-shell hidden md:block">
+            <div className="table-shell mt-4 max-h-[560px] overflow-auto">
               <table>
                 <thead>
                   <tr>
@@ -512,7 +507,11 @@ export default function RelatoriosPage() {
                 <tbody>
                   {paginated.length ? (
                     paginated.map((ticket) => {
-                      const whatsappUrl = buildReceiptWhatsappUrl(ticket, settings?.name || 'Estacionamento');
+                      const whatsappUrl = buildReceiptWhatsappUrl(
+                        ticket,
+                        settings?.name || 'Estacionamento'
+                      );
+
                       return (
                         <tr key={ticket.id}>
                           <td>{shortDateTime(ticket.exitAt || ticket.entryAt)}</td>
@@ -522,11 +521,16 @@ export default function RelatoriosPage() {
                           <td>{ticket.paymentMethod || '-'}</td>
                           <td>
                             <div className="flex gap-2">
-                              <button className="secondary-button py-2" onClick={() => openPrintPage(`/print/saida/${ticket.id}`)}>
+                              <button
+                                className="secondary-button py-2"
+                                onClick={() => openPrintPage(`/print/saida/${ticket.id}`)}
+                              >
                                 <Printer size={16} />
                               </button>
                               <a
-                                className={`secondary-button py-2 ${!whatsappUrl ? 'pointer-events-none opacity-50' : ''}`}
+                                className={`secondary-button py-2 ${
+                                  !whatsappUrl ? 'pointer-events-none opacity-50' : ''
+                                }`}
                                 href={whatsappUrl || '#'}
                                 target="_blank"
                               >
@@ -546,13 +550,23 @@ export default function RelatoriosPage() {
               </table>
             </div>
 
-            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-slate-500">Página {page} de {totalPages}</p>
-              <div className="grid grid-cols-2 gap-3 sm:flex">
-                <button className="secondary-button w-full justify-center py-2" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+            <div className="mt-4 flex items-center justify-between">
+              <p className="text-sm text-slate-500">
+                Página {page} de {totalPages}
+              </p>
+              <div className="flex gap-3">
+                <button
+                  className="secondary-button py-2"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
                   Anterior
                 </button>
-                <button className="secondary-button w-full justify-center py-2" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+                <button
+                  className="secondary-button py-2"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                >
                   Próxima
                 </button>
               </div>

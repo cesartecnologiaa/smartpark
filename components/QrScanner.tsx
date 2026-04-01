@@ -5,19 +5,13 @@ import { Camera, ScanQrCode } from 'lucide-react';
 
 interface QrScannerProps {
   onRead: (text: string) => void;
-  autoStart?: boolean;
-  variant?: 'card' | 'inline';
 }
 
-export default function QrScanner({ onRead, autoStart = false, variant = 'card' }: QrScannerProps) {
+export default function QrScanner({ onRead }: QrScannerProps) {
   const elementId = useId().replace(/:/g, '');
-  const [active, setActive] = useState(autoStart);
+  const [active, setActive] = useState(false);
   const [error, setError] = useState('');
   const scannerRef = useRef<any>(null);
-
-  useEffect(() => {
-    if (autoStart) setActive(true);
-  }, [autoStart]);
 
   useEffect(() => {
     let mounted = true;
@@ -63,35 +57,6 @@ export default function QrScanner({ onRead, autoStart = false, variant = 'card' 
     };
   }, [active, elementId, onRead]);
 
-  const buttonText = active ? 'Parar câmera' : 'Ler QR Code';
-
-  if (variant === 'inline') {
-    return (
-      <div>
-        <button
-          type="button"
-          className={`selection-card min-h-[128px] gap-3 ${active ? 'selection-card-active' : ''}`}
-          onClick={() => setActive((v) => !v)}
-        >
-          <div className="icon-soft-blue">
-            <ScanQrCode size={20} />
-          </div>
-          <div>
-            <p className="selection-card-title">{buttonText}</p>
-            <p className="mt-1 text-xs leading-5 text-slate-500">
-              {active ? 'Posicione o QR Code dentro da área da câmera.' : 'Toque para abrir a câmera e localizar o ticket.'}
-            </p>
-          </div>
-        </button>
-        {error ? <p className="mt-3 text-sm text-rose-600">{error}</p> : null}
-        <div
-          id={elementId}
-          className={`mt-4 overflow-hidden rounded-[24px] border border-slate-200 bg-slate-50 ${active ? 'min-h-[280px]' : 'hidden'}`}
-        />
-      </div>
-    );
-  }
-
   return (
     <div className="panel-card p-5">
       <div className="mb-4 flex items-center gap-3">
@@ -104,7 +69,7 @@ export default function QrScanner({ onRead, autoStart = false, variant = 'card' 
       <div className="flex flex-wrap gap-3">
         <button type="button" className="primary-button" onClick={() => setActive((v) => !v)}>
           <Camera size={16} />
-          {buttonText}
+          {active ? 'Parar câmera' : 'Ler QR Code'}
         </button>
       </div>
       {error ? <p className="mt-3 text-sm text-rose-600">{error}</p> : null}

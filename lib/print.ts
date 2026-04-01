@@ -13,35 +13,28 @@ export function openPrintPage(path: string) {
 
   const tenantId = window.localStorage.getItem('smartpark:tenantId');
   const printMethod = readStoredPrintMethod();
-  const isAndroid = isAndroidDevice();
-  const useRawBtFlow = printMethod === 'rawbt' && isAndroid;
+  const useRawBtFlow = printMethod === 'rawbt' && isAndroidDevice();
 
   const url = new URL(path, window.location.origin);
   if (tenantId && !url.searchParams.get('tenant')) {
     url.searchParams.set('tenant', tenantId);
   }
 
-  // ── RawBT flow (Android thermal printer app) ─────────────────────────────
   if (useRawBtFlow) {
     url.searchParams.set('printMode', 'rawbt');
-    url.searchParams.set('autoPrint', '1');
-    url.searchParams.set('returnTo', `${window.location.pathname}${window.location.search}${window.location.hash}`);
-    window.location.assign(`${url.pathname}${url.search}${url.hash}`);
-    return;
+    url.searchParams.set('autoPrint', '0');
   }
 
-  // ── Android browser flow ──────────────────────────────────────────────────
-  // Android blocks window.open() popups. We navigate the current tab to the
-  // print page and pass returnTo so the page can navigate back after printing.
-  if (isAndroid) {
-    url.searchParams.set('autoPrint', '1');
-    url.searchParams.set('returnTo', `${window.location.pathname}${window.location.search}${window.location.hash}`);
-    window.location.assign(`${url.pathname}${url.search}${url.hash}`);
-    return;
-  }
-
-  // ── Desktop popup flow ────────────────────────────────────────────────────
   const finalPath = `${url.pathname}${url.search}${url.hash}`;
+
+  if (useRawBtFlow) {
+    const rawBtWindow = window.open(finalPath, '_blank', 'noopener,noreferrer');
+    if (!rawBtWindow) {
+      window.location.assign(finalPath);
+    }
+    return;
+  }
+
   const popup = window.open(
     finalPath,
     'smartpark-print-popup',
@@ -49,7 +42,6 @@ export function openPrintPage(path: string) {
   );
 
   if (!popup) {
-    // Popup blocked on desktop too — open in new tab as last resort
     window.open(finalPath, '_blank', 'noopener,noreferrer');
     return;
   }

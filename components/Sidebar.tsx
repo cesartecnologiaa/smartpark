@@ -18,12 +18,11 @@ import {
   Warehouse,
   X,
 } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import type { UserRole } from '@/types';
+import { UserRole } from '@/types';
 
-const menu: Array<{ href: string; label: string; icon: LucideIcon; roles: UserRole[] }> = [
+const menu: { href: string; label: string; icon: any; roles: UserRole[] }[] = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'vendedor'] },
   { href: '/entrada', label: 'Entrada', icon: Car, roles: ['admin', 'vendedor'] },
   { href: '/saida', label: 'Saída', icon: CreditCard, roles: ['admin', 'vendedor'] },
@@ -42,16 +41,6 @@ export default function Sidebar() {
   const { profile, logout } = useAuth();
   const [open, setOpen] = useState(false);
 
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
-    if (typeof document === 'undefined') return;
-    document.body.classList.toggle('mobile-nav-open', open);
-    return () => document.body.classList.remove('mobile-nav-open');
-  }, [open]);
-
   const allowedMenu = useMemo(
     () => menu.filter((item) => (profile ? item.roles.includes(profile.role) : false)),
     [profile]
@@ -68,95 +57,14 @@ export default function Sidebar() {
 
   return (
     <>
-      <button
-        className={`primary-outline fixed left-4 top-[max(16px,env(safe-area-inset-top))] z-[80] lg:hidden ${open ? 'pointer-events-none opacity-0' : ''}`}
-        type="button"
-        aria-label="Abrir menu"
-        onClick={() => setOpen(true)}
-      >
-        <Menu size={18} />
+      <button className="primary-button fixed right-4 top-4 z-50 h-14 w-14 rounded-full p-0 lg:hidden shadow-xl" type="button" onClick={() => setOpen((v) => !v)}>
+        {open ? <X size={24} /> : <Menu size={24} />}
       </button>
 
-      {open ? (
-        <div className="fixed inset-0 z-[90] lg:hidden">
-          <div
-            className="absolute inset-0 bg-slate-950/45"
-            aria-hidden="true"
-            onClick={() => setOpen(false)}
-          />
+      {open && <div className="fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-sm lg:hidden" onClick={() => setOpen(false)} />}
 
-          <aside
-            className="absolute inset-y-0 left-0 flex h-full w-[86vw] max-w-[320px] flex-col border-r border-slate-200 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.18)]"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Menu de navegação"
-          >
-            <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 pb-4 pt-[max(16px,env(safe-area-inset-top))]">
-              <div className="flex min-w-0 items-center gap-3">
-                <Image src="/icon-smartpark.svg" alt="SmartPark" width={42} height={42} priority />
-                <div className="min-w-0">
-                  <div className="truncate text-[28px] font-bold leading-none text-slate-950">SmartPark</div>
-                  <div className="truncate pt-1 text-xs font-medium text-slate-500">
-                    Seu Estacionamento Inteligente
-                  </div>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                className="secondary-button h-11 w-11 justify-center rounded-full px-0"
-                aria-label="Fechar menu"
-                onClick={() => setOpen(false)}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="flex min-h-0 flex-1 flex-col px-3 py-4">
-              <nav className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-1">
-                {allowedMenu.map((item) => {
-                  const active = pathname === item.href;
-                  const Icon = item.icon;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => setOpen(false)}
-                      className={`sidebar-link ${active ? 'sidebar-link-active' : ''}`}
-                    >
-                      <Icon size={18} />
-                      <span>{item.label}</span>
-                    </Link>
-                  );
-                })}
-              </nav>
-
-              <div className="mt-4 rounded-[24px] border border-slate-200 bg-slate-50 p-4">
-                <div className="space-y-1">
-                  <div className="text-base font-semibold text-slate-950">{profile.name}</div>
-                  <div className="break-all text-xs text-slate-500">{profile.email}</div>
-                  <div className="pt-2">
-                    <span className="inline-flex rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
-                      {roleLabel}
-                    </span>
-                  </div>
-                </div>
-
-                <button
-                  className="secondary-button mt-4 w-full justify-center"
-                  type="button"
-                  onClick={handleLogout}
-                >
-                  <LogOut size={16} />Sair
-                </button>
-              </div>
-            </div>
-          </aside>
-        </div>
-      ) : null}
-
-      <aside className="sidebar-shell hidden lg:sticky lg:top-6 lg:flex lg:h-fit lg:max-h-[calc(100vh-48px)] lg:flex-col lg:overflow-hidden">
-        <div className="min-h-0 flex-1">
+      <aside className={`sidebar-shell ${open ? 'fixed inset-y-4 left-4 z-40 block' : 'hidden'} lg:sticky lg:top-6 lg:block`}>
+        <div>
           <div className="mb-8 flex items-center gap-3 px-2">
             <Image src="/icon-smartpark.svg" alt="SmartPark" width={48} height={48} priority />
             <div className="min-w-0">
@@ -165,7 +73,7 @@ export default function Sidebar() {
             </div>
           </div>
 
-          <nav className="space-y-1.5 overflow-y-auto pr-1">
+          <nav className="space-y-1.5">
             {allowedMenu.map((item) => {
               const active = pathname === item.href;
               const Icon = item.icon;
@@ -173,6 +81,7 @@ export default function Sidebar() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={() => setOpen(false)}
                   className={`sidebar-link ${active ? 'sidebar-link-active' : ''}`}
                 >
                   <Icon size={18} />
@@ -183,18 +92,14 @@ export default function Sidebar() {
           </nav>
         </div>
 
-        <div className="mt-6 rounded-[24px] border border-slate-200 bg-slate-50 p-4">
-          <div className="space-y-1">
-            <div className="text-base font-semibold text-slate-950">{profile.name}</div>
-            <div className="break-all text-xs text-slate-500">{profile.email}</div>
-            <div className="pt-2">
-              <span className="inline-flex rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
-                {roleLabel}
-              </span>
-            </div>
+        <div className="mt-8 rounded-[24px] border border-slate-200 bg-slate-50 p-5">
+          <div className="space-y-1.5">
+            <div className="text-lg font-bold text-slate-950 lg:text-base">{profile.name}</div>
+            <div className="break-all text-sm text-slate-500 lg:text-xs">{profile.email}</div>
+            <div className="pt-2"><span className="inline-flex rounded-full bg-blue-100 px-4 py-1.5 text-xs font-bold text-blue-700 lg:px-3 lg:py-1 lg:font-semibold">{roleLabel}</span></div>
           </div>
-          <button className="secondary-button mt-4 w-full justify-center" type="button" onClick={handleLogout}>
-            <LogOut size={16} />Sair
+          <button className="secondary-button mt-5 w-full justify-center h-14 lg:h-12 lg:mt-4" type="button" onClick={handleLogout}>
+            <LogOut size={20} className="lg:size-4" />Sair
           </button>
         </div>
       </aside>
