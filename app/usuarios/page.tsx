@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { createUserWithEmailAndPassword, getAuth, signOut as signOutSecondary } from 'firebase/auth';
 import { collection, doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
-import { Plus, Users } from 'lucide-react';
+import { MoreHorizontal, Pencil, Plus, ShieldCheck, Trash2, Users } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import RoleGuard from '@/components/RoleGuard';
 import { db, getSecondaryApp } from '@/lib/firebase';
@@ -21,10 +21,17 @@ export default function UsuariosPage() {
   const [role, setRole] = useState<UserRole>('vendedor');
   const [message, setMessage] = useState('');
   const [filter, setFilter] = useState<'Todos' | 'Ativos' | 'Inativos'>('Todos');
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [editingUser, setEditingUser] = useState<AppUser | null>(null);
+  const [editingName, setEditingName] = useState('');
+  const [roleUser, setRoleUser] = useState<AppUser | null>(null);
+  const [roleValue, setRoleValue] = useState<UserRole>('vendedor');
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'users'), (snap) => {
-      const items = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<AppUser, 'id'>) }));
+      const items = snap.docs
+        .map((d) => ({ id: d.id, ...(d.data() as Omit<AppUser, 'id'> & { deleted?: boolean }) }))
+        .filter((item) => !(item as any).deleted);
       items.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
       setRows(items);
     });
@@ -54,13 +61,99 @@ export default function UsuariosPage() {
     }
   }
 
-  async function toggleRole(user: AppUser) {
-    const nextRole: UserRole = user.role === 'admin' ? 'vendedor' : 'admin';
-    await updateDoc(doc(db, 'users', user.id), { role: nextRole });
+  function openEditUser(user: AppUser) {
+    setMenuOpenId(null);
+    setEditingUser(user);
+    setEditingName(user.name || '');
+  }
+
+  async function handleEditUser(event: FormEvent) {
+    event.preventDefault();
+    if (!editingUser) return;
+    setMessage('');
+    try {
+      await updateDoc(doc(db, 'users', editingUser.id), {
+        name: editingName.trim() || editingUser.name,
+        updatedAt: new Date().toISOString(),
+      });
+      setEditingUser(null);
+      setEditingName('');
+      setMessage('Usuário atualizado com sucesso.');
+    } catch (error: any) {
+      setMessage(error?.message || 'Falha ao atualizar usuário.');
+    }
+  }
+
+  function openRoleModal(user: AppUser) {
+    setMenuOpenId(null);
+    setRoleUser(user);
+    setRoleValue(user.role || 'vendedor');
+  }
+
+  async function handleSaveRole(event: FormEvent) {
+    event.preventDefault();
+    if (!roleUser) return;
+    setMessage('');
+    try {
+      await updateDoc(doc(db, 'users', roleUser.id), { role: roleValue, updatedAt: new Date().toISOString() });
+      setRoleUser(null);
+      setMessage('Cargo alterado com sucesso.');
+    } catch (error: any) {
+      setMessage(error?.message || 'Falha ao alterar cargo.');
+    }
+  }
+
+  async function handleDeleteUser(user: AppUser) {
+    const confirmed = typeof window === 'undefined' ? true : window.confirm(`Deseja excluir ${user.name}? O usuário será ocultado da lista e ficará sem acesso.`);
+    if (!confirmed) return;
+    setMenuOpenId(null);
+    setMessage('');
+    try {
+      await updateDoc(doc(db, 'users', user.id), {
+        active: false,
+        deleted: true,
+        deletedAt: new Date().toISOString(),
+      });
+      setMessage('Usuário excluído com sucesso.');
+    } catch (error: any) {
+      setMessage(error?.message || 'Falha ao excluir usuário.');
+    }
   }
 
   async function toggleActive(user: AppUser) {
     await updateDoc(doc(db, 'users', user.id), { active: user.active === false ? true : false });
+  }
+
+  function ActionMenu({ user }: { user: AppUser }) {
+    const open = menuOpenId === user.id;
+    return (
+      <div className="relative">
+        <button
+          type="button"
+          aria-label="Ações do usuário"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm transition hover:bg-slate-800"
+          onClick={() => setMenuOpenId(open ? null : user.id)}
+        >
+          <MoreHorizontal size={18} />
+        </button>
+        {open ? (
+          <>
+            <button type="button" className="fixed inset-0 z-10 cursor-default" onClick={() => setMenuOpenId(null)} aria-label="Fechar menu" />
+            <div className="absolute right-0 top-12 z-20 min-w-[190px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.12)]">
+              <button type="button" className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50" onClick={() => openEditUser(user)}>
+                <Pencil size={16} /> Editar usuário
+              </button>
+              <button type="button" className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50" onClick={() => openRoleModal(user)}>
+                <ShieldCheck size={16} /> Alterar cargo
+              </button>
+              <button type="button" className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-rose-600 transition hover:bg-rose-50" onClick={() => handleDeleteUser(user)}>
+                <Trash2 size={16} /> Excluir usuário
+              </button>
+            </div>
+          </>
+        ) : null}
+      </div>
+    );
   }
 
   return (
@@ -82,7 +175,10 @@ export default function UsuariosPage() {
                       <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Nome</p>
                       <p className="mt-1 break-words text-base font-semibold text-slate-900">{user.name}</p>
                     </div>
-                    <span className={`inline-flex shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${user.active === false ? 'bg-slate-100 text-slate-700' : 'bg-emerald-100 text-emerald-700'}`}>{user.active === false ? 'Inativo' : 'Ativo'}</span>
+                    <div className="flex items-start gap-2">
+                      <span className={`inline-flex shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${user.active === false ? 'bg-slate-100 text-slate-700' : 'bg-emerald-100 text-emerald-700'}`}>{user.active === false ? 'Inativo' : 'Ativo'}</span>
+                      <ActionMenu user={user} />
+                    </div>
                   </div>
                   <div className="mt-3 space-y-3 text-sm">
                     <div className="min-w-0">
@@ -90,13 +186,12 @@ export default function UsuariosPage() {
                       <p className="break-all font-medium text-slate-900">{user.email}</p>
                     </div>
                     <div className="min-w-0">
-                      <p className="text-slate-500">Permissão</p>
-                      <p className="font-medium uppercase text-slate-900">{user.role}</p>
+                      <p className="text-slate-500">Cargo</p>
+                      <p className="font-medium text-slate-900">{user.role === 'admin' ? 'Administrador' : 'Vendedor'}</p>
                     </div>
                   </div>
                   <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                    <button className="secondary-button w-full justify-center py-2 sm:w-auto" onClick={() => toggleRole(user)}>Alternar Cargo</button>
-                    <button className="secondary-button w-full justify-center py-2 sm:w-auto" onClick={() => toggleActive(user)}>{user.active === false ? 'Ativar' : 'Desativar'}</button>
+                    <button className="secondary-button w-full justify-center py-2 sm:w-auto" onClick={() => toggleActive(user)}>{user.active === false ? 'Ativar' : 'Inativar'}</button>
                   </div>
                 </div>
               ))}
@@ -109,7 +204,7 @@ export default function UsuariosPage() {
                     <tr>
                       <th>Nome</th>
                       <th>E-mail</th>
-                      <th>Role</th>
+                      <th>Cargo</th>
                       <th>Status</th>
                       <th>Ações</th>
                     </tr>
@@ -119,9 +214,14 @@ export default function UsuariosPage() {
                       <tr key={user.id}>
                         <td>{user.name}</td>
                         <td className="break-all">{user.email}</td>
-                        <td>{user.role}</td>
+                        <td>{user.role === 'admin' ? 'Administrador' : 'Vendedor'}</td>
                         <td><span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${user.active === false ? 'bg-slate-100 text-slate-700' : 'bg-emerald-100 text-emerald-700'}`}>{user.active === false ? 'Inativo' : 'Ativo'}</span></td>
-                        <td><div className="flex flex-wrap gap-2"><button className="secondary-button py-2" onClick={() => toggleRole(user)}>Alternar Role</button><button className="secondary-button py-2" onClick={() => toggleActive(user)}>{user.active === false ? 'Ativar' : 'Inativar'}</button></div></td>
+                        <td>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button className="secondary-button py-2" onClick={() => toggleActive(user)}>{user.active === false ? 'Ativar' : 'Inativar'}</button>
+                            <ActionMenu user={user} />
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -130,6 +230,66 @@ export default function UsuariosPage() {
             </div>
           </div>
         ) : <div className="empty-state"><div className="icon-soft-blue"><Users size={30} /></div><h3 className="mt-4 text-lg font-semibold text-slate-900">Nenhum usuário encontrado.</h3><p className="mt-2 text-sm text-slate-500">Cadastre funcionários para controlar acessos por perfil.</p></div>}
+
+        {editingUser ? (
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 p-4">
+            <div className="w-full max-w-md rounded-[24px] border border-slate-200 bg-white p-6 shadow-[0_20px_50px_rgba(15,23,42,0.18)]">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900">Editar usuário</h3>
+                  <p className="mt-1 text-sm text-slate-500">Você pode alterar o nome exibido do usuário.</p>
+                </div>
+                <button type="button" className="secondary-button px-3" onClick={() => setEditingUser(null)}>Fechar</button>
+              </div>
+              <form className="mt-5 space-y-4" onSubmit={handleEditUser}>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Nome</label>
+                  <input className="app-input" value={editingName} onChange={(e) => setEditingName(e.target.value)} required />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">E-mail</label>
+                  <input className="app-input bg-slate-50" value={editingUser.email} disabled />
+                  <p className="mt-1 text-xs text-slate-500">O e-mail de acesso não é alterado por esta tela.</p>
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                  <button type="button" className="secondary-button" onClick={() => setEditingUser(null)}>Cancelar</button>
+                  <button type="submit" className="primary-button">Salvar alterações</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        ) : null}
+
+        {roleUser ? (
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 p-4">
+            <div className="w-full max-w-md rounded-[24px] border border-slate-200 bg-white p-6 shadow-[0_20px_50px_rgba(15,23,42,0.18)]">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900">Alterar cargo</h3>
+                  <p className="mt-1 text-sm text-slate-500">Defina o nível de acesso do usuário.</p>
+                </div>
+                <button type="button" className="secondary-button px-3" onClick={() => setRoleUser(null)}>Fechar</button>
+              </div>
+              <form className="mt-5 space-y-4" onSubmit={handleSaveRole}>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Usuário</label>
+                  <input className="app-input bg-slate-50" value={roleUser.name} disabled />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Cargo</label>
+                  <select className="app-input" value={roleValue} onChange={(e) => setRoleValue(e.target.value as UserRole)}>
+                    <option value="admin">Administrador</option>
+                    <option value="vendedor">Vendedor</option>
+                  </select>
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                  <button type="button" className="secondary-button" onClick={() => setRoleUser(null)}>Cancelar</button>
+                  <button type="submit" className="primary-button">Salvar cargo</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        ) : null}
       </div>
     </RoleGuard>
   );
