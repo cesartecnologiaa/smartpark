@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { createUserWithEmailAndPassword, getAuth, signOut as signOutSecondary } from 'firebase/auth';
 import { collection, doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
-import { MoreHorizontal, Pencil, Plus, ShieldCheck, Trash2, Users } from 'lucide-react';
+import { MoreHorizontal, Pencil, Plus, ShieldCheck, Trash2, UserX, Users } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import RoleGuard from '@/components/RoleGuard';
 import { db, getSecondaryApp } from '@/lib/firebase';
@@ -146,6 +146,9 @@ export default function UsuariosPage() {
               <button type="button" className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50" onClick={() => openRoleModal(user)}>
                 <ShieldCheck size={16} /> Alterar cargo
               </button>
+              <button type="button" className={`flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium transition ${user.active === false ? 'text-emerald-700 hover:bg-emerald-50' : 'text-amber-700 hover:bg-amber-50'}`} onClick={() => { setMenuOpenId(null); toggleActive(user); }}>
+                <UserX size={16} /> {user.active === false ? 'Ativar usuário' : 'Desativar'}
+              </button>
               <button type="button" className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-rose-600 transition hover:bg-rose-50" onClick={() => handleDeleteUser(user)}>
                 <Trash2 size={16} /> Excluir usuário
               </button>
@@ -191,7 +194,7 @@ export default function UsuariosPage() {
                     </div>
                   </div>
                   <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                    <button className="secondary-button w-full justify-center py-2 sm:w-auto" onClick={() => toggleActive(user)}>{user.active === false ? 'Ativar' : 'Inativar'}</button>
+                    <button className="secondary-button w-full justify-center py-2 sm:w-auto" onClick={() => toggleActive(user)}>{user.active === false ? 'Ativar' : 'Desativar'}</button>
                   </div>
                 </div>
               ))}
@@ -218,7 +221,7 @@ export default function UsuariosPage() {
                         <td><span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${user.active === false ? 'bg-slate-100 text-slate-700' : 'bg-emerald-100 text-emerald-700'}`}>{user.active === false ? 'Inativo' : 'Ativo'}</span></td>
                         <td>
                           <div className="flex flex-wrap items-center gap-2">
-                            <button className="secondary-button py-2" onClick={() => toggleActive(user)}>{user.active === false ? 'Ativar' : 'Inativar'}</button>
+                            <button className="secondary-button py-2" onClick={() => toggleActive(user)}>{user.active === false ? 'Ativar' : 'Desativar'}</button>
                             <ActionMenu user={user} />
                           </div>
                         </td>
