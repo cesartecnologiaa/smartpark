@@ -3,20 +3,21 @@
 import { getDoc } from 'firebase/firestore';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { X } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { tenantDoc } from '@/lib/tenant';
 import { CashRegister, EstablishmentSettings } from '@/types';
 import { money, shortDateTime } from '@/utils/format';
 
-const RawbtToolbar = ({ onPrint, onShare, canShare }: { onPrint: () => void; onShare: () => void; canShare: boolean }) => (
+const RawbtToolbar = ({ onPrint, onClose }: { onPrint: () => void; onClose: () => void }) => (
   <div className="rawbt-toolbar">
     <div>
       <strong>Modo Android / RAWBT</strong>
-      <p>Use imprimir para enviar o cupom à bobina térmica. Se preferir, compartilhe o link do cupom com o RAWBT.</p>
+      <p>Use imprimir para enviar o cupom à bobina térmica.</p>
     </div>
     <div className="rawbt-actions">
       <button type="button" onClick={onPrint}>Imprimir</button>
-      {canShare ? <button type="button" onClick={onShare}>Compartilhar</button> : null}
+      <button type="button" onClick={onClose} className="bg-slate-600 hover:bg-slate-700"><X size={16} />Fechar</button>
     </div>
   </div>
 );
@@ -36,46 +37,29 @@ export default function PrintCaixaPage({ params }: { params: { id: string } }) {
   const blurredRef = useRef(false);
   const finishedRef = useRef(false);
 
-  const canShare = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent || '') && typeof navigator.share === 'function';
-
   const finish = () => {
     if (finishedRef.current) return;
     finishedRef.current = true;
     
-    if (printMode === 'rawbt' || /Android/i.test(navigator.userAgent)) {
-      if (returnTo) window.location.replace(returnTo);
-      else window.history.back();
+    if (returnTo) {
+      window.location.href = returnTo;
+      return;
+    }
+    
+    if (/Android/i.test(navigator.userAgent)) {
+      window.history.back();
       return;
     }
     
     try { window.close(); } catch (_) {}
     setTimeout(() => {
-      if (!window.closed) {
-        if (returnTo) window.location.replace(returnTo);
-        else window.history.back();
-      }
+      if (!window.closed) window.history.back();
     }, 500);
   };
 
   function handlePrintClick() {
     window.print();
-  }
-
-  async function handleShareClick() {
-    if (!canShare) return;
-    try {
-      await navigator.share({
-        title: 'Cupom SmartPark',
-        text: 'Abrir cupom SmartPark no RAWBT',
-        url: window.location.href,
-      });
-    } catch (error) {
-      const shareError = error as { name?: string } | undefined;
-      if (shareError?.name !== 'AbortError') handlePrintClick();
-    }
-  }
-
-  useEffect(() => {
+   => {
     async function load() {
       const [cashSnap, settingsSnap] = await Promise.all([
         getDoc(tenantDoc(db, tenantId, 'cashRegisters', params.id)),
@@ -130,7 +114,7 @@ export default function PrintCaixaPage({ params }: { params: { id: string } }) {
   if (!cash) {
     return (
       <>
-        {printMode === 'rawbt' ? <RawbtToolbar onPrint={handlePrintClick} onShare={handleShareClick} canShare={canShare} /> : null}
+        {printMode === 'rawbt' ? <RawbtToolbar onPrint={handlePrintClick} onClose={finish} /> : null}
         <div className="print-ticket-page"><div className="print-ticket">Carregando...</div></div>
       </>
     );
