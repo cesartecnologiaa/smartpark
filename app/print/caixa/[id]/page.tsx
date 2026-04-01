@@ -101,13 +101,13 @@ export default function PrintCaixaPage({ params }: { params: { id: string } }) {
   const is58 = (settings?.printerWidth || '80mm') === '58mm';
   const styles = useMemo(() => ({
     pageWidth: is58 ? '58mm' : '80mm',
-    padding: is58 ? '1.4mm 1.15mm 1.5mm' : '4mm 3.5mm 3mm',
-    companyFont: is58 ? '4.9mm' : '5.6mm',
-    companySub: is58 ? '2.7mm' : '2.9mm',
-    metaFont: is58 ? '2.45mm' : '2.8mm',
-    subtitle: is58 ? '3.9mm' : '4.3mm',
-    rowFont: is58 ? '3.35mm' : '4.3mm',
-    footerFont: is58 ? '2.25mm' : '2.6mm',
+    padding: is58 ? '1.8mm 1.45mm 1.8mm' : '4mm 3.5mm 3mm',
+    companyFont: is58 ? '5.5mm' : '5.6mm',
+    companySub: is58 ? '3.1mm' : '2.9mm',
+    metaFont: is58 ? '2.8mm' : '2.8mm',
+    subtitle: is58 ? '4.4mm' : '4.3mm',
+    rowFont: is58 ? '3.85mm' : '4.3mm',
+    footerFont: is58 ? '2.65mm' : '2.6mm',
     cutHeight: is58 ? '6mm' : '14mm',
   }), [is58]);
 
@@ -157,15 +157,15 @@ export default function PrintCaixaPage({ params }: { params: { id: string } }) {
         .print-ticket-page { display: flex; justify-content: center; padding: 8px; background: #f3f4f6; min-height: 100vh; width: 100%; }
         .print-ticket { width: ${styles.pageWidth}; background: #fff; color: #111827; padding: ${styles.padding}; box-sizing: border-box; font-family: Arial, Helvetica, sans-serif; box-shadow: 0 0 0 1px #e5e7eb, 0 12px 30px rgba(15, 23, 42, 0.10); }
         .ticket-header { text-align: center; margin-bottom: 2.2mm; }
-        .ticket-company { text-align: center; font-size: ${styles.companyFont}; font-weight: 600; line-height: 1.15; margin-bottom: 1.2mm;  }
-        .ticket-company-sub { font-size: ${styles.companySub}; font-weight: 500; line-height: 1.25; color: #000; margin-bottom: 0.8mm; }
-        .ticket-company-meta { display: flex; justify-content: center; gap: 2.2mm; flex-wrap: wrap; font-size: ${styles.metaFont}; line-height: 1.2; color: #000; font-weight: 500; }
+        .ticket-company { text-align: center; font-size: ${styles.companyFont}; font-weight: 700; line-height: 1.1; margin-bottom: 1.3mm; word-break: break-word; white-space: normal; }
+        .ticket-company-sub { font-size: ${styles.companySub}; font-weight: 600; line-height: 1.2; color: #000; margin-bottom: 1mm; }
+        .ticket-company-meta { display: flex; justify-content: center; gap: 1.8mm; flex-wrap: wrap; font-size: ${styles.metaFont}; line-height: 1.2; color: #000; font-weight: 600; }
         .ticket-dashed { border-top: 0.35mm dashed #94a3b8; margin: 3mm 0; }
-        .ticket-subtitle { text-align: center; font-size: ${styles.subtitle}; font-weight: 600; color: #000; margin: 1.5mm 0 2.5mm; }
-        .ticket-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 2mm; margin: 1.2mm 0; font-size: ${styles.rowFont}; line-height: 1.35; }
-        .ticket-row-label { color: #000; font-weight: 500; }
-        .ticket-row-value { color: #111827; font-weight: 600; text-align: right; }
-        .ticket-footer { text-align: center; font-size: ${styles.footerFont}; line-height: 1.2; color: #000; font-weight: 500; margin-top: 1.2mm; }
+        .ticket-subtitle { text-align: center; font-size: ${styles.subtitle}; font-weight: 700; color: #000; margin: 1.8mm 0 2.7mm; }
+        .ticket-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 1.8mm; margin: 1.45mm 0; font-size: ${styles.rowFont}; line-height: 1.3; }
+        .ticket-row-label { color: #000; font-weight: 600; }
+        .ticket-row-value { color: #111827; font-weight: 700; text-align: right; }
+        .ticket-footer { text-align: center; font-size: ${styles.footerFont}; line-height: 1.2; color: #000; font-weight: 600; margin-top: 1.6mm; }
         .ticket-footer p { margin: 0 0 0.6mm; }
         .cut-space { height: ${styles.cutHeight}; }
         .rawbt-toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: center; background: #1e293b; color: white; padding: 12px 16px; position: sticky; top: 0; z-index: 50; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
