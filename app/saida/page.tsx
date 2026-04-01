@@ -159,29 +159,56 @@ export default function SaidaPage() {
             </div>
           ) : null}
 
-          <div className="table-shell table-shell--compact mt-5">
-            <table>
-              <thead>
-                <tr>
-                  <th>Ticket</th>
-                  <th>Placa</th>
-                  <th>Tipo</th>
-                  <th>Entrada</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {results.length ? results.map((ticket) => (
-                  <tr key={ticket.id}>
-                    <td>{ticket.shortTicket}</td>
-                    <td>{ticket.plate || '-'}</td>
-                    <td>{ticket.vehicleType}</td>
-                    <td>{shortDateTime(ticket.entryAt)}</td>
-                    <td><button className="secondary-button py-2" onClick={() => previewTicket(ticket)}>Calcular</button></td>
+          <div className="mt-5 space-y-3 md:hidden">
+            {results.length ? results.map((ticket) => (
+              <div key={ticket.id} className="rounded-[20px] border border-slate-200 bg-white p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Ticket</p>
+                    <p className="mt-1 text-base font-semibold text-slate-900">{ticket.shortTicket}</p>
+                  </div>
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-700">{ticket.vehicleType}</span>
+                </div>
+                <div className="mt-3 grid grid-cols-1 gap-3 text-sm">
+                  <div className="min-w-0">
+                    <p className="text-slate-500">Placa</p>
+                    <p className="font-medium text-slate-900 break-words">{ticket.plate || '-'}</p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-slate-500">Entrada</p>
+                    <p className="font-medium text-slate-900 break-words">{shortDateTime(ticket.entryAt)}</p>
+                  </div>
+                </div>
+                <button className="secondary-button mt-4 w-full justify-center py-2" onClick={() => previewTicket(ticket)}>Calcular</button>
+              </div>
+            )) : <div className="rounded-[20px] border border-slate-200 bg-white px-4 py-5 text-center text-sm text-slate-500">Nenhum registro</div>}
+          </div>
+
+          <div className="hidden md:block">
+            <div className="table-shell table-shell--compact mt-5">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Ticket</th>
+                    <th>Placa</th>
+                    <th>Tipo</th>
+                    <th>Entrada</th>
+                    <th></th>
                   </tr>
-                )) : <tr><td colSpan={5}>Nenhum registro</td></tr>}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {results.length ? results.map((ticket) => (
+                    <tr key={ticket.id}>
+                      <td>{ticket.shortTicket}</td>
+                      <td>{ticket.plate || '-'}</td>
+                      <td>{ticket.vehicleType}</td>
+                      <td>{shortDateTime(ticket.entryAt)}</td>
+                      <td><button className="secondary-button py-2" onClick={() => previewTicket(ticket)}>Calcular</button></td>
+                    </tr>
+                  )) : <tr><td colSpan={5}>Nenhum registro</td></tr>}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 

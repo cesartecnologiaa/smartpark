@@ -79,30 +79,62 @@ export default function DashboardPage() {
             </div>
           </div>
           {activeTickets.length ? (
-            <div className="table-shell">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Ticket</th>
-                    <th>Placa</th>
-                    <th>Tipo</th>
-                    <th>Vaga</th>
-                    <th>Entrada</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {activeTickets.map((ticket) => (
-                    <tr key={ticket.id}>
-                      <td>{ticket.shortTicket}</td>
-                      <td>{ticket.plate || '-'}</td>
-                      <td>{ticket.vehicleType}</td>
-                      <td>{ticket.parkingSpaceCode || '-'}</td>
-                      <td>{shortDateTime(ticket.entryAt)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <>
+              <div className="space-y-3 md:hidden">
+                {activeTickets.map((ticket) => (
+                  <div key={ticket.id} className="rounded-[20px] border border-slate-200 bg-white p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Ticket</p>
+                        <p className="mt-1 text-base font-semibold text-slate-900">{ticket.shortTicket}</p>
+                      </div>
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-700">{ticket.vehicleType}</span>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                      <div className="min-w-0">
+                        <p className="text-slate-500">Placa</p>
+                        <p className="font-medium text-slate-900 break-words">{ticket.plate || '-'}</p>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-slate-500">Vaga</p>
+                        <p className="font-medium text-slate-900 break-words">{ticket.parkingSpaceCode || '-'}</p>
+                      </div>
+                    </div>
+                    <div className="mt-3 min-w-0 text-sm">
+                      <p className="text-slate-500">Entrada</p>
+                      <p className="font-medium text-slate-900 break-words">{shortDateTime(ticket.entryAt)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="hidden md:block">
+                <div className="table-shell">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Ticket</th>
+                        <th>Placa</th>
+                        <th>Tipo</th>
+                        <th>Vaga</th>
+                        <th>Entrada</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {activeTickets.map((ticket) => (
+                        <tr key={ticket.id}>
+                          <td>{ticket.shortTicket}</td>
+                          <td>{ticket.plate || '-'}</td>
+                          <td>{ticket.vehicleType}</td>
+                          <td>{ticket.parkingSpaceCode || '-'}</td>
+                          <td>{shortDateTime(ticket.entryAt)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
           ) : (
             <div className="empty-state min-h-[320px]">
               <div className="icon-soft-blue"><CarFront size={26} /></div>
