@@ -139,15 +139,15 @@ export default function PrintEntradaPage({ params }: { params: { id: string } })
   const styles = useMemo(() => ({
     pageWidth: is58 ? '58mm' : '80mm',
     padding: is58 ? '1.4mm 1.15mm 1.5mm' : '4mm 3.5mm 3mm',
-    companyFont: is58 ? '4.1mm' : '5.6mm',
-    companySub: is58 ? '2.25mm' : '2.9mm',
-    metaFont: is58 ? '2.05mm' : '2.8mm',
-    labelTop: is58 ? '2.6mm' : '3.8mm',
-    codeFont: is58 ? '7.9mm' : '12mm',
-    subtitle: is58 ? '3.25mm' : '4.3mm',
-    rowFont: is58 ? '2.8mm' : '4.3mm',
-    footerFont: is58 ? '1.95mm' : '2.6mm',
-    qrSize: is58 ? '22mm' : '31mm',
+    companyFont: is58 ? '4.9mm' : '5.6mm',
+    companySub: is58 ? '2.7mm' : '2.9mm',
+    metaFont: is58 ? '2.45mm' : '2.8mm',
+    labelTop: is58 ? '3.2mm' : '3.8mm',
+    codeFont: is58 ? '8.8mm' : '12mm',
+    subtitle: is58 ? '3.9mm' : '4.3mm',
+    rowFont: is58 ? '3.35mm' : '4.3mm',
+    footerFont: is58 ? '2.25mm' : '2.6mm',
+    qrSize: is58 ? '24mm' : '31mm',
     cutHeight: is58 ? '6mm' : '14mm',
   }), [is58]);
 
@@ -198,7 +198,7 @@ export default function PrintEntradaPage({ params }: { params: { id: string } })
         .print-ticket-page { display: flex; justify-content: center; padding: 0; background: #eef2f7; min-height: 100vh; }
         .print-ticket { width: ${styles.pageWidth}; background: #fff; color: #111827; padding: ${styles.padding}; box-sizing: border-box; font-family: Arial, Helvetica, sans-serif; box-shadow: ${is58 ? 'none' : '0 0 0 1px #e5e7eb, 0 8px 20px rgba(15, 23, 42, 0.08)'}; }
         .ticket-header { text-align: center; margin-bottom: 2.2mm; }
-        .ticket-company { text-align: center; font-size: ${styles.companyFont}; font-weight: 600; line-height: 1.15; margin-bottom: 1.2mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ticket-company { text-align: center; font-size: ${styles.companyFont}; font-weight: 600; line-height: 1.15; margin-bottom: 1.2mm;  }
         .ticket-company-sub { font-size: ${styles.companySub}; font-weight: 500; line-height: 1.25; color: #000; margin-bottom: 0.8mm; }
         .ticket-company-meta { display: flex; justify-content: center; gap: 2.2mm; flex-wrap: wrap; font-size: ${styles.metaFont}; line-height: 1.2; color: #000; font-weight: 500; }
         .ticket-dashed { border-top: 0.35mm dashed #94a3b8; margin: 3mm 0; }

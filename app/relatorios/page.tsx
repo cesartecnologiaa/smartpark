@@ -391,7 +391,7 @@ export default function RelatoriosPage() {
           }
         />
 
-        <div className="panel-card mb-6 p-6">
+        <div className="panel-card mb-6 min-w-0 overflow-hidden p-4 sm:p-6">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <input
               className="app-input"
@@ -431,7 +431,7 @@ export default function RelatoriosPage() {
           </div>
         </div>
 
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             title="Faturamento Total"
             value={money(totals.totalRevenue)}
@@ -457,8 +457,8 @@ export default function RelatoriosPage() {
           />
         </div>
 
-        <div className="mt-6 grid gap-6 xl:grid-cols-[0.95fr,1.05fr]">
-          <div className="panel-card p-6">
+        <div className="mt-6 grid gap-6 overflow-hidden xl:grid-cols-[minmax(0,0.95fr),minmax(0,1.05fr)]">
+          <div className="panel-card min-w-0 overflow-hidden p-4 sm:p-6">
             <h2 className="text-lg font-semibold text-slate-900">Faturamento Diário</h2>
             <div className="mt-4 space-y-4">
               {dailySummary.map(([date, value]) => (
@@ -486,8 +486,8 @@ export default function RelatoriosPage() {
             </div>
           </div>
 
-          <div className="panel-card p-6">
-            <div className="flex items-center justify-between gap-3">
+          <div className="panel-card min-w-0 overflow-hidden p-4 sm:p-6">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-lg font-semibold text-slate-900">Transações recentes</h2>
               <p className="text-sm text-slate-500">{filtered.length} encontradas</p>
             </div>
@@ -520,7 +520,7 @@ export default function RelatoriosPage() {
                           <td>{money(ticket.amountCharged)}</td>
                           <td>{ticket.paymentMethod || '-'}</td>
                           <td>
-                            <div className="flex gap-2">
+                            <div className="flex flex-col gap-2 sm:flex-row">
                               <button
                                 className="secondary-button py-2"
                                 onClick={() => openPrintPage(`/print/saida/${ticket.id}`)}
@@ -550,11 +550,11 @@ export default function RelatoriosPage() {
               </table>
             </div>
 
-            <div className="mt-4 flex items-center justify-between">
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-slate-500">
                 Página {page} de {totalPages}
               </p>
-              <div className="flex gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row">
                 <button
                   className="secondary-button py-2"
                   disabled={page <= 1}
