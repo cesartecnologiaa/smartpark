@@ -25,7 +25,7 @@ export default function PrintCaixaPage({ params }: { params: { id: string } }) {
   const tenantId = searchParams.get('tenant');
   const printMode = searchParams.get('printMode');
   const autoPrint = searchParams.get('autoPrint') !== '0';
-  const returnTo = searchParams.get('returnTo') || '/';
+  const returnTo = searchParams.get('returnTo');
   
   const [cash, setCash] = useState<CashRegister | null>(null);
   const [settings, setSettings] = useState<EstablishmentSettings | null>(null);
@@ -38,26 +38,25 @@ export default function PrintCaixaPage({ params }: { params: { id: string } }) {
   const finish = () => {
     if (finishedRef.current) return;
     finishedRef.current = true;
-
-    try {
-      if (window.opener && !window.opener.closed) {
-        window.opener.location.replace(returnTo);
-        window.close();
-        return;
-      }
-    } catch (_) {}
-
-    window.location.replace(returnTo);
+    
+    if (returnTo) {
+      window.location.href = returnTo;
+      return;
+    }
+    
+    if (/Android/i.test(navigator.userAgent)) {
+      window.history.back();
+      return;
+    }
+    
+    try { window.close(); } catch (_) {}
+    setTimeout(() => {
+      if (!window.closed) window.history.back();
+    }, 500);
   };
 
   function handlePrintClick() {
-    startedRef.current = true;
-    blurredRef.current = false;
     window.print();
-
-    if (printMode === 'rawbt' || /Android/i.test(navigator.userAgent || '')) {
-      setTimeout(finish, 900);
-    }
   }
 
   useEffect(() => {
@@ -74,41 +73,28 @@ export default function PrintCaixaPage({ params }: { params: { id: string } }) {
   }, [params.id, tenantId]);
 
   useEffect(() => {
-    if (!loaded || !cash) return;
+    if (!autoPrint || !loaded || !cash || startedRef.current) return;
 
-    const handleAfterPrint = () => {
-      if (startedRef.current) finish();
-    };
-    const handleBlur = () => {
-      if (startedRef.current) blurredRef.current = true;
-    };
-    const handleFocus = () => {
-      if (startedRef.current && blurredRef.current) setTimeout(finish, 400);
-    };
+    const handleAfterPrint = () => finish();
+    const handleBlur = () => { blurredRef.current = true; };
+    const handleFocus = () => { if (startedRef.current && blurredRef.current) setTimeout(finish, 400); };
 
     window.addEventListener('afterprint', handleAfterPrint);
     window.addEventListener('blur', handleBlur);
     window.addEventListener('focus', handleFocus);
 
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    if (autoPrint && !startedRef.current) {
-      timer = setTimeout(() => {
-        startedRef.current = true;
-        window.print();
-
-        if (printMode === 'rawbt' || /Android/i.test(navigator.userAgent || '')) {
-          setTimeout(finish, 900);
-        }
-      }, 500);
-    }
+    const timer = setTimeout(() => {
+      startedRef.current = true;
+      window.print();
+    }, 500);
 
     return () => {
-      if (timer) clearTimeout(timer);
+      clearTimeout(timer);
       window.removeEventListener('afterprint', handleAfterPrint);
       window.removeEventListener('blur', handleBlur);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [autoPrint, loaded, cash, printMode]);
+  }, [autoPrint, loaded, cash]);
 
   const sangrias = useMemo(() => cash?.withdrawals?.reduce((sum, item) => sum + item.amount, 0) || 0, [cash]);
   const saldo = cash ? cash.openingAmount + cash.revenueByTickets + cash.revenueByMonthly - sangrias : 0;
