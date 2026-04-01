@@ -15,7 +15,7 @@ export default function PageHeader({
         <h1 className="text-2xl font-bold tracking-tight text-slate-950 lg:text-3xl">{title}</h1>
         <p className="mt-1 text-xs text-slate-500 lg:text-sm">{subtitle}</p>
       </div>
-      {actions ? <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3 lg:gap-3">{actions}</div> : null}
+      {actions ? <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 lg:w-auto lg:justify-end lg:gap-3">{actions}</div> : null}
     </div>
   );
 }

@@ -131,7 +131,7 @@ export default function SaidaPage() {
   const whatsappUrl = preview?.ticket ? buildReceiptWhatsappUrl({ ...preview.ticket, durationMinutes: preview.minutes, amountCharged: preview.total, paymentMethod }, settings?.name || 'Estacionamento') : '';
 
   return (
-    <div>
+    <div className="min-w-0 overflow-x-hidden">
       <PageHeader title="Registrar Saída" subtitle="Localize o veículo pelo QR Code, código do ticket ou placa" />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -149,7 +149,7 @@ export default function SaidaPage() {
         ))}
       </div>
 
-      <div className="mt-6 grid gap-6 overflow-hidden xl:grid-cols-[minmax(0,1fr),420px]">
+      <div className="mt-6 grid gap-6 overflow-hidden xl:grid-cols-[minmax(0,1fr),minmax(0,420px)]">
         <div className="panel-card min-w-0 overflow-hidden p-4 sm:p-6">
           {mode === 'qr' ? <QrScanner onRead={handleQrRead} /> : null}
           {mode !== 'qr' ? (
@@ -159,7 +159,7 @@ export default function SaidaPage() {
             </div>
           ) : null}
 
-          <div className="table-shell mt-5">
+          <div className="table-shell table-shell--compact mt-5">
             <table>
               <thead>
                 <tr>
@@ -190,11 +190,11 @@ export default function SaidaPage() {
           {preview ? (
             <div className="mt-4 space-y-3 text-sm text-slate-600">
               <div className="rounded-3xl bg-slate-50 p-4">
-                <div className="flex items-center justify-between gap-3"><span>Ticket</span><strong className="min-w-0 break-all text-right text-slate-900">{preview.ticket.shortTicket}</strong></div>
-                <div className="mt-2 flex items-center justify-between gap-3"><span>Placa</span><strong className="min-w-0 break-all text-right text-slate-900">{preview.ticket.plate || '-'}</strong></div>
-                <div className="mt-2 flex items-center justify-between gap-3"><span>Tempo</span><strong className="min-w-0 text-right text-slate-900">{formatDurationMinutes(preview.minutes)}</strong></div>
-                <div className="mt-2 flex items-center justify-between gap-3"><span>Vaga</span><strong className="min-w-0 break-all text-right text-slate-900">{selectedSpace?.code || preview.ticket.parkingSpaceCode || '-'}</strong></div>
-                <div className="mt-2 flex items-center justify-between gap-3"><span>Total</span><strong className="min-w-0 text-right text-xl text-slate-900">{money(preview.total)}</strong></div>
+                <div className="mobile-break-rows flex items-center justify-between gap-3"><span>Ticket</span><strong className="min-w-0 break-all text-right text-slate-900">{preview.ticket.shortTicket}</strong></div>
+                <div className="mobile-break-rows mt-2 flex items-center justify-between gap-3"><span>Placa</span><strong className="min-w-0 break-all text-right text-slate-900">{preview.ticket.plate || '-'}</strong></div>
+                <div className="mobile-break-rows mt-2 flex items-center justify-between gap-3"><span>Tempo</span><strong className="min-w-0 text-right text-slate-900">{formatDurationMinutes(preview.minutes)}</strong></div>
+                <div className="mobile-break-rows mt-2 flex items-center justify-between gap-3"><span>Vaga</span><strong className="min-w-0 break-all text-right text-slate-900">{selectedSpace?.code || preview.ticket.parkingSpaceCode || '-'}</strong></div>
+                <div className="mobile-break-rows mt-2 flex items-center justify-between gap-3"><span>Total</span><strong className="min-w-0 text-right text-xl text-slate-900">{money(preview.total)}</strong></div>
               </div>
 
               {preview.monthly ? (
@@ -211,7 +211,7 @@ export default function SaidaPage() {
               </select>
               {!openCashRegister ? <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">Abra o caixa para concluir a saída.</p> : null}
               <button className="primary-button w-full justify-center" disabled={!openCashRegister} onClick={finalizeExit}>Finalizar Saída</button>
-              <div className="flex flex-col gap-3 sm:flex-row">
+              <div className="mobile-stack flex flex-col gap-3 sm:flex-row">
                 <button className="secondary-button w-full justify-center" onClick={() => openPrintPage(`/print/saida/${preview.ticket.id}`)}><Printer size={16} />Imprimir Cupom</button>
                 <a className={`secondary-button w-full justify-center ${!whatsappUrl ? 'pointer-events-none opacity-50' : ''}`} href={whatsappUrl || '#'} target="_blank"><MessageCircleMore size={16} />WhatsApp</a>
               </div>

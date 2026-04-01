@@ -373,17 +373,17 @@ export default function RelatoriosPage() {
 
   return (
     <RoleGuard roles={['admin']}>
-      <div>
+      <div className="min-w-0 overflow-x-hidden">
         <PageHeader
           title="Relatórios"
           subtitle="Análise financeira e operacional"
           actions={
             <>
-              <button className="secondary-button" onClick={exportCsv}>
+              <button className="secondary-button w-full sm:w-auto" onClick={exportCsv}>
                 <Download size={16} />
                 Exportar CSV
               </button>
-              <button className="primary-button" onClick={exportPdf}>
+              <button className="primary-button w-full sm:w-auto" onClick={exportPdf}>
                 <FileText size={16} />
                 Exportar PDF
               </button>
@@ -392,7 +392,7 @@ export default function RelatoriosPage() {
         />
 
         <div className="panel-card mb-6 min-w-0 overflow-hidden p-4 sm:p-6">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 [&>*]:min-w-0">
             <input
               className="app-input"
               type="date"
@@ -457,7 +457,7 @@ export default function RelatoriosPage() {
           />
         </div>
 
-        <div className="mt-6 grid gap-6 overflow-hidden xl:grid-cols-[minmax(0,0.95fr),minmax(0,1.05fr)]">
+        <div className="mt-6 grid gap-6 overflow-hidden xl:grid-cols-[minmax(0,0.95fr),minmax(0,1.05fr)] [&>*]:min-w-0">
           <div className="panel-card min-w-0 overflow-hidden p-4 sm:p-6">
             <h2 className="text-lg font-semibold text-slate-900">Faturamento Diário</h2>
             <div className="mt-4 space-y-4">
@@ -492,7 +492,7 @@ export default function RelatoriosPage() {
               <p className="text-sm text-slate-500">{filtered.length} encontradas</p>
             </div>
 
-            <div className="table-shell mt-4 max-h-[560px] overflow-auto">
+            <div className="table-shell table-shell--reports mt-4 max-h-[560px] overflow-auto">
               <table>
                 <thead>
                   <tr>
@@ -520,7 +520,7 @@ export default function RelatoriosPage() {
                           <td>{money(ticket.amountCharged)}</td>
                           <td>{ticket.paymentMethod || '-'}</td>
                           <td>
-                            <div className="flex flex-col gap-2 sm:flex-row">
+                            <div className="mobile-stack flex flex-col gap-2 sm:flex-row">
                               <button
                                 className="secondary-button py-2"
                                 onClick={() => openPrintPage(`/print/saida/${ticket.id}`)}
@@ -550,11 +550,11 @@ export default function RelatoriosPage() {
               </table>
             </div>
 
-            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mt-4 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-sm text-slate-500">
                 Página {page} de {totalPages}
               </p>
-              <div className="flex flex-col gap-3 sm:flex-row">
+              <div className="mobile-stack flex flex-col gap-3 sm:flex-row">
                 <button
                   className="secondary-button py-2"
                   disabled={page <= 1}
