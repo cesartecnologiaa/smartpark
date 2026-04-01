@@ -59,7 +59,9 @@ export default function PrintCaixaPage({ params }: { params: { id: string } }) {
 
   function handlePrintClick() {
     window.print();
-   => {
+  }
+
+  useEffect(() => {
     async function load() {
       const [cashSnap, settingsSnap] = await Promise.all([
         getDoc(tenantDoc(db, tenantId, 'cashRegisters', params.id)),
@@ -122,7 +124,7 @@ export default function PrintCaixaPage({ params }: { params: { id: string } }) {
 
   return (
     <>
-      {printMode === 'rawbt' ? <RawbtToolbar onPrint={handlePrintClick} onShare={handleShareClick} canShare={canShare} /> : null}
+      {printMode === 'rawbt' ? <RawbtToolbar onPrint={handlePrintClick} onClose={finish} /> : null}
       <div className="print-ticket-page">
         <div className="print-ticket">
           <div className="ticket-header">
@@ -154,8 +156,8 @@ export default function PrintCaixaPage({ params }: { params: { id: string } }) {
       </div>
 
       <style jsx global>{`
-        .print-ticket-page { display: flex; justify-content: center; padding: 0; background: #eef2f7; min-height: 100vh; }
-        .print-ticket { width: ${styles.pageWidth}; background: #fff; color: #111827; padding: ${styles.padding}; box-sizing: border-box; font-family: Arial, Helvetica, sans-serif; box-shadow: ${is58 ? 'none' : '0 0 0 1px #e5e7eb, 0 8px 20px rgba(15, 23, 42, 0.08)'}; }
+        .print-ticket-page { display: flex; justify-content: center; padding: 8px; background: #f3f4f6; min-height: 100vh; width: 100%; }
+        .print-ticket { width: ${styles.pageWidth}; background: #fff; color: #111827; padding: ${styles.padding}; box-sizing: border-box; font-family: Arial, Helvetica, sans-serif; box-shadow: 0 0 0 1px #e5e7eb, 0 12px 30px rgba(15, 23, 42, 0.10); }
         .ticket-header { text-align: center; margin-bottom: 2.2mm; }
         .ticket-company { text-align: center; font-size: ${styles.companyFont}; font-weight: 600; line-height: 1.15; margin-bottom: 1.2mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .ticket-company-sub { font-size: ${styles.companySub}; font-weight: 500; line-height: 1.25; color: #000; margin-bottom: 0.8mm; }
@@ -168,11 +170,12 @@ export default function PrintCaixaPage({ params }: { params: { id: string } }) {
         .ticket-footer { text-align: center; font-size: ${styles.footerFont}; line-height: 1.2; color: #000; font-weight: 500; margin-top: 1.2mm; }
         .ticket-footer p { margin: 0 0 0.6mm; }
         .cut-space { height: ${styles.cutHeight}; }
-        .rawbt-toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: center; background: #1e293b; color: white; padding: 12px 20px; position: sticky; top: 0; z-index: 50; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .rawbt-toolbar strong { display: block; font-size: 14px; color: #38bdf8; }
-        .rawbt-toolbar p { margin: 2px 0 0; font-size: 11px; color: #94a3b8; line-height: 1.3; }
+        .rawbt-toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: center; background: #1e293b; color: white; padding: 12px 16px; position: sticky; top: 0; z-index: 50; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .rawbt-toolbar strong { display: block; font-size: 13px; color: #38bdf8; }
+        .rawbt-toolbar p { margin: 2px 0 0; font-size: 10px; color: #94a3b8; line-height: 1.3; }
         .rawbt-actions { display: flex; gap: 8px; }
-        .rawbt-actions button { background: #38bdf8; color: #0f172a; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+        .rawbt-actions button { background: #38bdf8; color: #0f172a; border: none; padding: 8px 12px; border-radius: 6px; font-weight: 600; font-size: 12px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 4px; }
+        .rawbt-actions button.bg-slate-600 { background: #475569; color: #fff; }
         .rawbt-actions button:active { transform: scale(0.95); opacity: 0.9; }
         @media print {
           .rawbt-toolbar { display: none !important; }
