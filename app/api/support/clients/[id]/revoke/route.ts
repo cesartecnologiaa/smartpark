@@ -6,7 +6,7 @@ import { verifySupportAccess } from '@/lib/support/auth';
 
 export const runtime = 'nodejs';
 
-export async function PATCH(
+export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {

@@ -119,14 +119,18 @@ export default function PrintSaidaPage({ params }: { params: { id: string } }) {
   const is58 = (settings?.printerWidth || '80mm') === '58mm';
   const styles = useMemo(() => ({
     pageWidth: is58 ? '58mm' : '80mm',
-    padding: is58 ? '1.8mm 1.45mm 1.8mm' : '4mm 3.5mm 3mm',
+    padding: is58 ? '2.6mm 2mm 2.8mm' : '4mm 3.5mm 3mm',
     companyFont: is58 ? '5.5mm' : '5.6mm',
     companySub: is58 ? '3.1mm' : '2.9mm',
     metaFont: is58 ? '2.8mm' : '2.8mm',
     subtitle: is58 ? '4.4mm' : '4.3mm',
     rowFont: is58 ? '3.85mm' : '4.3mm',
     footerFont: is58 ? '2.65mm' : '2.6mm',
-    cutHeight: is58 ? '6mm' : '14mm',
+    sectionGap: is58 ? '4mm' : '3mm',
+    rowGap: is58 ? '2.2mm' : '1.45mm',
+    footerGap: is58 ? '3.2mm' : '1.6mm',
+    footerLineGap: is58 ? '1.2mm' : '0.6mm',
+    cutHeight: is58 ? '10mm' : '14mm',
   }), [is58]);
 
   if (!ticket) {
@@ -180,13 +184,13 @@ export default function PrintSaidaPage({ params }: { params: { id: string } }) {
         .ticket-company { text-align: center; font-size: ${styles.companyFont}; font-weight: 700; line-height: 1.1; margin-bottom: 1.3mm; word-break: break-word; white-space: normal; }
         .ticket-company-sub { font-size: ${styles.companySub}; font-weight: 600; line-height: 1.2; color: #000; margin-bottom: 1mm; }
         .ticket-company-meta { display: flex; justify-content: center; gap: 1.8mm; flex-wrap: wrap; font-size: ${styles.metaFont}; line-height: 1.2; color: #000; font-weight: 600; }
-        .ticket-dashed { border-top: 0.35mm dashed #94a3b8; margin: 3mm 0; }
-        .ticket-subtitle { text-align: center; font-size: ${styles.subtitle}; font-weight: 700; color: #000; margin: 1.8mm 0 2.7mm; }
-        .ticket-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 1.8mm; margin: 1.45mm 0; font-size: ${styles.rowFont}; line-height: 1.3; }
+        .ticket-dashed { border-top: 0.35mm dashed #94a3b8; margin: ${styles.sectionGap} 0; }
+        .ticket-subtitle { text-align: center; font-size: ${styles.subtitle}; font-weight: 700; color: #000; margin: ${is58 ? '2.4mm 0 3.4mm' : '1.8mm 0 2.7mm'}; }
+        .ticket-row { display: flex; justify-content: space-between; align-items: flex-start; gap: ${is58 ? '2.4mm' : '1.8mm'}; margin: ${styles.rowGap} 0; font-size: ${styles.rowFont}; line-height: ${is58 ? '1.42' : '1.3'}; }
         .ticket-row-label { color: #000; font-weight: 600; }
         .ticket-row-value { color: #111827; font-weight: 700; text-align: right; }
-        .ticket-footer { text-align: center; font-size: ${styles.footerFont}; line-height: 1.2; color: #000; font-weight: 600; margin-top: 1.6mm; }
-        .ticket-footer p { margin: 0 0 0.6mm; }
+        .ticket-footer { text-align: center; font-size: ${styles.footerFont}; line-height: ${is58 ? '1.35' : '1.2'}; color: #000; font-weight: 600; margin-top: ${styles.footerGap}; }
+        .ticket-footer p { margin: 0 0 ${styles.footerLineGap}; }
         .cut-space { height: ${styles.cutHeight}; }
         .rawbt-toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: center; background: #1e293b; color: white; padding: 12px 20px; position: sticky; top: 0; z-index: 50; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .rawbt-toolbar strong { display: block; font-size: 14px; color: #38bdf8; }
