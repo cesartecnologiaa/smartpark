@@ -1,16 +1,13 @@
 /// <reference types="node" />
 import 'server-only';
 
+type FirestorePrimitive = string | number | boolean | null | Date;
 type FirestoreValue =
-  | string
-  | number
-  | boolean
-  | null
-  | Date
+  | FirestorePrimitive
   | FirestoreValue[]
   | { [key: string]: FirestoreValue };
 
-const FIREBASE_AUTH_BASE = 'https://oauth2.googleapis.com/token';
+const GOOGLE_OAUTH_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 
 function requiredEnv(name: string) {
   const value = process.env[name];
@@ -32,7 +29,7 @@ function getPrivateKey() {
   return requiredEnv('FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY').replace(/\\n/g, '\n');
 }
 
-function base64Url(input: Buffer | string) {
+function toBase64Url(input: Buffer | string) {
   return Buffer.from(input)
     .toString('base64')
     .replace(/=/g, '')
@@ -45,11 +42,10 @@ async function signJwt(unsignedJwt: string) {
   const signer = crypto.createSign('RSA-SHA256');
   signer.update(unsignedJwt);
   signer.end();
-  const signature = signer.sign(getPrivateKey());
-  return base64Url(signature);
+  return toBase64Url(signer.sign(getPrivateKey()));
 }
 
-async function createAccessTokenAssertion() {
+async function createJwtAssertion() {
   const now = Math.floor(Date.now() / 1000);
 
   const header = {
@@ -60,13 +56,13 @@ async function createAccessTokenAssertion() {
   const payload = {
     iss: getServiceAccountEmail(),
     scope: 'https://www.googleapis.com/auth/datastore https://www.googleapis.com/auth/userinfo.email',
-    aud: FIREBASE_AUTH_BASE,
+    aud: GOOGLE_OAUTH_TOKEN_URL,
     iat: now,
     exp: now + 3600,
   };
 
-  const encodedHeader = base64Url(JSON.stringify(header));
-  const encodedPayload = base64Url(JSON.stringify(payload));
+  const encodedHeader = toBase64Url(JSON.stringify(header));
+  const encodedPayload = toBase64Url(JSON.stringify(payload));
   const unsignedJwt = `${encodedHeader}.${encodedPayload}`;
   const signature = await signJwt(unsignedJwt);
 
@@ -80,9 +76,9 @@ export async function getAdminAccessToken() {
     return cachedAccessToken.token;
   }
 
-  const assertion = await createAccessTokenAssertion();
+  const assertion = await createJwtAssertion();
 
-  const response = await fetch(FIREBASE_AUTH_BASE, {
+  const response = await fetch(GOOGLE_OAUTH_TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -94,8 +90,8 @@ export async function getAdminAccessToken() {
 
   const data = await response.json();
 
-  if (!response.ok || !data.access_token) {
-    throw new Error(data?.error_description || data?.error || 'Falha ao obter access token do Firebase.');
+  if (!response.ok || !data?.access_token) {
+    throw new Error(data?.error_description || data?.error || 'Falha ao obter token admin do Firebase.');
   }
 
   cachedAccessToken = {
@@ -154,6 +150,7 @@ function encodeFirestoreValue(value: FirestoreValue): any {
 }
 
 function decodeFirestoreValue(value: any): any {
+  if (!value || typeof value !== 'object') return null;
   if ('stringValue' in value) return value.stringValue;
   if ('integerValue' in value) return Number(value.integerValue);
   if ('doubleValue' in value) return Number(value.doubleValue);
@@ -205,8 +202,8 @@ export async function getDocumentByPath(path: string, accessToken?: string) {
   if (response.status === 404) return null;
 
   if (!response.ok) {
-    const data = await response.text();
-    throw new Error(data || `Erro ao buscar documento ${path}.`);
+    const text = await response.text();
+    throw new Error(text || `Erro ao buscar documento ${path}.`);
   }
 
   return response.json();
@@ -298,4 +295,57 @@ export async function patchDocument(
   }
 
   return mapFirestoreDocument(data);
+}
+
+export async function queryCollectionByField(
+  collection: string,
+  field: string,
+  operator: 'EQUAL' = 'EQUAL',
+  value: FirestoreValue = ''
+) {
+  const token = await getAdminAccessToken();
+
+  const response = await fetch(
+    `https://firestore.googleapis.com/v1/projects/${getProjectId()}/databases/(default)/documents:runQuery`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        structuredQuery: {
+          from: [{ collectionId: collection }],
+          where: {
+            fieldFilter: {
+              field: { fieldPath: field },
+              op: operator,
+              value: encodeFirestoreValue(value),
+            },
+          },
+          limit: 50,
+        },
+      }),
+      cache: 'no-store',
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data?.error?.message || `Erro ao consultar ${collection} por ${field}.`);
+  }
+
+  return (data || [])
+    .map((item: any) => item?.document)
+    .filter(Boolean)
+    .map((doc: any) => mapFirestoreDocument(doc));
+}
+
+export async function createSupportSessionRecord(payload: {
+  sessionId: string;
+  criadoEm: Date;
+  expiraEm: Date;
+}) {
+  return createDocument('support_sessions', payload);
 }
