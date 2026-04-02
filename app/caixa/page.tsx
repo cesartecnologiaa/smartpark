@@ -304,15 +304,85 @@ export default function CaixaPage() {
       {message ? <p className="mb-4 text-sm text-blue-700">{message}</p> : null}
 
       {canViewCashHistory ? (
-        <div className="panel-card p-6">
+        <div className="panel-card p-4 sm:p-6">
           <h2 className="text-lg font-semibold text-slate-900">Histórico de caixas</h2>
-          <div className="table-shell mt-4">
+
+          <div className="mt-4 space-y-3 md:hidden">
+            {cashRows.length ? (
+              cashRows.map((row) => {
+                const sangrias =
+                  row.withdrawals?.reduce((sum, item) => sum + item.amount, 0) || 0;
+
+                const finalValue =
+                  row.openingAmount +
+                  row.revenueByTickets +
+                  row.revenueByMonthly -
+                  sangrias;
+
+                return (
+                  <div key={row.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">{row.operatorName}</p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          Aberto em {shortDateTime(row.openedAt)}
+                        </p>
+                      </div>
+                      <span
+                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                          row.status === 'aberto'
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : 'bg-slate-100 text-slate-700'
+                        }`}
+                      >
+                        {row.status === 'aberto' ? 'Aberto' : 'Fechado'}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                      <div className="rounded-xl bg-slate-50 p-3">
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Fechamento</p>
+                        <p className="mt-1 font-semibold text-slate-800">{shortDateTime(row.closedAt)}</p>
+                      </div>
+                      <div className="rounded-xl bg-slate-50 p-3">
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Fechado por</p>
+                        <p className="mt-1 font-semibold text-slate-800 break-words">{row.closedByName || '-'}</p>
+                      </div>
+                      <div className="rounded-xl bg-slate-50 p-3">
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Valor inicial</p>
+                        <p className="mt-1 font-semibold text-slate-800">{money(row.openingAmount)}</p>
+                      </div>
+                      <div className="rounded-xl bg-slate-50 p-3">
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Faturamento</p>
+                        <p className="mt-1 font-semibold text-slate-800">{money(row.revenueByTickets + row.revenueByMonthly)}</p>
+                      </div>
+                      <div className="rounded-xl bg-slate-50 p-3">
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Sangrias</p>
+                        <p className="mt-1 font-semibold text-slate-800">{money(sangrias)}</p>
+                      </div>
+                      <div className="rounded-xl bg-slate-50 p-3">
+                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Valor final</p>
+                        <p className="mt-1 font-semibold text-slate-800">{money(finalValue)}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                Nenhum registro
+              </div>
+            )}
+          </div>
+
+          <div className="table-shell mt-4 hidden md:block">
             <table>
               <thead>
                 <tr>
-                  <th>Operador</th>
+                  <th>Aberto por</th>
                   <th>Abertura</th>
                   <th>Fechamento</th>
+                  <th>Fechado por</th>
                   <th>V. Inicial</th>
                   <th>Faturamento</th>
                   <th>Sangrias</th>
@@ -358,7 +428,7 @@ export default function CaixaPage() {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={8}>Nenhum registro</td>
+                    <td colSpan={9}>Nenhum registro</td>
                   </tr>
                 )}
               </tbody>
