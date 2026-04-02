@@ -139,7 +139,7 @@ export default function UsuariosPage() {
         {open ? (
           <>
             <button type="button" className="fixed inset-0 z-10 cursor-default" onClick={() => setMenuOpenId(null)} aria-label="Fechar menu" />
-            <div className="absolute right-0 top-12 z-20 min-w-[190px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.12)]">
+            <div className="absolute right-0 top-12 z-20 min-w-[190px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.12)] md:bottom-12 md:top-auto">
               <button type="button" className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50" onClick={() => openEditUser(user)}>
                 <Pencil size={16} /> Editar usuário
               </button>
@@ -169,8 +169,8 @@ export default function UsuariosPage() {
         {message ? <p className="mb-4 text-sm text-blue-700">{message}</p> : null}
 
         {filtered.length ? (
-          <div className="panel-card p-6">
-            <div className="space-y-3 md:hidden">
+          <div>
+            <div className="panel-card space-y-3 p-4 md:hidden">
               {filtered.map((user) => (
                 <div key={user.id} className="rounded-[20px] border border-slate-200 bg-white p-4">
                   <div className="flex items-start justify-between gap-3">
