@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
-import { CashRegister, EstablishmentSettings, ParkingTicket, PriceSetting } from '@/types';
+import { CashRegister, EstablishmentSettings, ParkingTicket, PriceSetting, VehicleType } from '@/types';
 import { money, shortDateTime } from '@/utils/format';
 
 const PAPER_WIDTH_MM = 80;
@@ -150,7 +150,7 @@ export async function generateCashClosingPdf(
   priceSettings: PriceSetting[],
   settings?: EstablishmentSettings
 ) {
-  const dynamicHeight = 180 + (priceSettings.length * 8) + (cashRegister.withdrawals.length * 8) + CUT_EXTRA_MM;
+  const dynamicHeight = 220 + (priceSettings.length * 8) + (cashRegister.withdrawals.length * 8) + CUT_EXTRA_MM;
   const doc = createDoc(dynamicHeight);
   const company = companyInfo(settings);
 
@@ -177,6 +177,21 @@ export async function generateCashClosingPdf(
     blockLine(doc, `${item.vehicleType}:`, money(byCategory[item.vehicleType] || 0), y);
     y += 7;
   });
+
+  const byCount = finishedTickets.reduce<Record<VehicleType, number>>((acc, item) => {
+    acc[item.vehicleType] = (acc[item.vehicleType] || 0) + 1;
+    return acc;
+  }, { CARRO: 0, MOTO: 0, CAMINHONETE: 0, CAMINHAO: 0 });
+
+  line(doc, y + 1);
+  y += 8;
+  centerText(doc, 'QUANTIDADE DE VEÍCULOS', y, 9, 'bold', GRAY);
+  y += 9;
+  blockLine(doc, 'Carros:', String(byCount.CARRO || 0), y); y += 7;
+  blockLine(doc, 'Motos:', String(byCount.MOTO || 0), y); y += 7;
+  blockLine(doc, 'Caminhonetes:', String(byCount.CAMINHONETE || 0), y); y += 7;
+  blockLine(doc, 'Caminhões:', String(byCount.CAMINHAO || 0), y); y += 7;
+  blockLine(doc, 'Total de veículos:', String(finishedTickets.length), y, true); y += 8;
 
   const sangrias = cashRegister.withdrawals.reduce((sum, item) => sum + item.amount, 0);
   const saldoFinal = cashRegister.openingAmount + cashRegister.revenueByTickets + cashRegister.revenueByMonthly - sangrias;

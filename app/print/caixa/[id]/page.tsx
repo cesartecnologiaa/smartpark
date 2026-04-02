@@ -1,11 +1,11 @@
 'use client';
 
-import { getDoc } from 'firebase/firestore';
+import { getDoc, getDocs, query, where } from 'firebase/firestore';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { tenantDoc } from '@/lib/tenant';
-import { CashRegister, EstablishmentSettings } from '@/types';
+import { CashRegister, EstablishmentSettings, ParkingTicket, VehicleType } from '@/types';
 import { money, shortDateTime } from '@/utils/format';
 
 const RawbtToolbar = ({ onPrint }: { onPrint: () => void }) => (
@@ -29,6 +29,12 @@ export default function PrintCaixaPage({ params }: { params: { id: string } }) {
   
   const [cash, setCash] = useState<CashRegister | null>(null);
   const [settings, setSettings] = useState<EstablishmentSettings | null>(null);
+  const [vehicleCounts, setVehicleCounts] = useState<Record<VehicleType, number>>({
+    CARRO: 0,
+    MOTO: 0,
+    CAMINHONETE: 0,
+    CAMINHAO: 0,
+  });
   const [loaded, setLoaded] = useState(false);
   
   const startedRef = useRef(false);
@@ -73,12 +79,19 @@ export default function PrintCaixaPage({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     async function load() {
-      const [cashSnap, settingsSnap] = await Promise.all([
+      const [cashSnap, settingsSnap, ticketsSnap] = await Promise.all([
         getDoc(tenantDoc(db, tenantId, 'cashRegisters', params.id)),
         getDoc(tenantDoc(db, tenantId, 'settings', 'establishment')),
+        getDocs(query(tenantCollection(db, tenantId, 'parkingTickets'), where('closedCashRegisterId', '==', params.id))),
       ]);
       if (cashSnap.exists()) setCash({ id: cashSnap.id, ...(cashSnap.data() as Omit<CashRegister, 'id'>) });
       if (settingsSnap.exists()) setSettings(settingsSnap.data() as EstablishmentSettings);
+      const counts: Record<VehicleType, number> = { CARRO: 0, MOTO: 0, CAMINHONETE: 0, CAMINHAO: 0 };
+      ticketsSnap.docs.forEach((doc) => {
+        const ticket = doc.data() as ParkingTicket;
+        if (ticket.vehicleType && ticket.vehicleType in counts) counts[ticket.vehicleType] += 1;
+      });
+      setVehicleCounts(counts);
       setLoaded(true);
     }
     load();
@@ -110,6 +123,7 @@ export default function PrintCaixaPage({ params }: { params: { id: string } }) {
 
   const sangrias = useMemo(() => cash?.withdrawals?.reduce((sum, item) => sum + item.amount, 0) || 0, [cash]);
   const saldo = cash ? cash.openingAmount + cash.revenueByTickets + cash.revenueByMonthly - sangrias : 0;
+  const totalVehicles = useMemo(() => Object.values(vehicleCounts).reduce((sum, value) => sum + value, 0), [vehicleCounts]);
   const is58 = (settings?.printerWidth || '80mm') === '58mm';
   const styles = useMemo(() => ({
     pageWidth: is58 ? '58mm' : '80mm',
@@ -158,6 +172,13 @@ export default function PrintCaixaPage({ params }: { params: { id: string } }) {
           <div className="ticket-row"><span className="ticket-row-label">Sangrias:</span><span className="ticket-row-value">{money(sangrias)}</span></div>
           <div className="ticket-row"><span className="ticket-row-label">Saldo Final:</span><span className="ticket-row-value">{money(saldo)}</span></div>
           <div className="ticket-dashed" />
+          <div className="ticket-subtitle ticket-subtitle-small">Veículos por classe</div>
+          <div className="ticket-row"><span className="ticket-row-label">Carros:</span><span className="ticket-row-value">{vehicleCounts.CARRO}</span></div>
+          <div className="ticket-row"><span className="ticket-row-label">Motos:</span><span className="ticket-row-value">{vehicleCounts.MOTO}</span></div>
+          <div className="ticket-row"><span className="ticket-row-label">Caminhonetes:</span><span className="ticket-row-value">{vehicleCounts.CAMINHONETE}</span></div>
+          <div className="ticket-row"><span className="ticket-row-label">Caminhões:</span><span className="ticket-row-value">{vehicleCounts.CAMINHAO}</span></div>
+          <div className="ticket-row"><span className="ticket-row-label">Total de veículos:</span><span className="ticket-row-value">{totalVehicles}</span></div>
+          <div className="ticket-dashed" />
           <div className="ticket-footer">
             {settings?.ticketFooter ? <p>{settings.ticketFooter}</p> : null}
             <p>Documento de fechamento do caixa.</p>
@@ -175,6 +196,7 @@ export default function PrintCaixaPage({ params }: { params: { id: string } }) {
         .ticket-company-meta { display: flex; justify-content: center; gap: 1.8mm; flex-wrap: wrap; font-size: ${styles.metaFont}; line-height: 1.2; color: #000; font-weight: 600; }
         .ticket-dashed { border-top: 0.35mm dashed #94a3b8; margin: 3mm 0; }
         .ticket-subtitle { text-align: center; font-size: ${styles.subtitle}; font-weight: 700; color: #000; margin: 1.8mm 0 2.7mm; }
+        .ticket-subtitle-small { font-size: calc(${styles.subtitle} - 0.5mm); margin-top: 2mm; }
         .ticket-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 1.8mm; margin: 1.45mm 0; font-size: ${styles.rowFont}; line-height: 1.3; }
         .ticket-row-label { color: #000; font-weight: 600; }
         .ticket-row-value { color: #111827; font-weight: 700; text-align: right; }
