@@ -1,0 +1,6 @@
+SUPPORT_EMAIL=suporte@smartpark.com
+SUPPORT_PASSWORD=senha_forte_aqui
+SUPPORT_SESSION_SECRET=troque_esta_chave_por_uma_string_longa_e_unica
+FIREBASE_PROJECT_ID=smartpark-3ef6a
+FIREBASE_SERVICE_ACCOUNT_EMAIL=seu-service-account@projeto.iam.gserviceaccount.com
+FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
