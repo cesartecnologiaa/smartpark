@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, MouseEvent, useEffect, useMemo, useState } from 'react';
 import { createUserWithEmailAndPassword, getAuth, signOut as signOutSecondary } from 'firebase/auth';
 import { collection, doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 import { MoreHorizontal, Pencil, Plus, ShieldCheck, Trash2, UserX, Users } from 'lucide-react';
@@ -22,6 +22,7 @@ export default function UsuariosPage() {
   const [message, setMessage] = useState('');
   const [filter, setFilter] = useState<'Todos' | 'Ativos' | 'Inativos'>('Todos');
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const [editingUser, setEditingUser] = useState<AppUser | null>(null);
   const [editingName, setEditingName] = useState('');
   const [roleUser, setRoleUser] = useState<AppUser | null>(null);
@@ -63,6 +64,7 @@ export default function UsuariosPage() {
 
   function openEditUser(user: AppUser) {
     setMenuOpenId(null);
+    setMenuPosition(null);
     setEditingUser(user);
     setEditingName(user.name || '');
   }
@@ -86,6 +88,7 @@ export default function UsuariosPage() {
 
   function openRoleModal(user: AppUser) {
     setMenuOpenId(null);
+    setMenuPosition(null);
     setRoleUser(user);
     setRoleValue(user.role || 'vendedor');
   }
@@ -107,6 +110,7 @@ export default function UsuariosPage() {
     const confirmed = typeof window === 'undefined' ? true : window.confirm(`Deseja excluir ${user.name}? O usuário será ocultado da lista e ficará sem acesso.`);
     if (!confirmed) return;
     setMenuOpenId(null);
+    setMenuPosition(null);
     setMessage('');
     try {
       await updateDoc(doc(db, 'users', user.id), {
@@ -124,29 +128,51 @@ export default function UsuariosPage() {
     await updateDoc(doc(db, 'users', user.id), { active: user.active === false ? true : false });
   }
 
+  function toggleActionMenu(event: MouseEvent<HTMLButtonElement>, userId: string, isOpen: boolean) {
+    if (isOpen) {
+      setMenuOpenId(null);
+      setMenuPosition(null);
+      return;
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const menuWidth = 210;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const left = Math.min(Math.max(12, rect.right - menuWidth), viewportWidth - menuWidth - 12);
+    const openUpwards = rect.bottom + 220 > viewportHeight;
+    const top = openUpwards ? Math.max(12, rect.top - 190) : Math.min(rect.bottom + 8, viewportHeight - 190);
+
+    setMenuOpenId(userId);
+    setMenuPosition({ top, left });
+  }
+
   function ActionMenu({ user }: { user: AppUser }) {
     const open = menuOpenId === user.id;
     return (
-      <div className="relative">
+      <div className="relative overflow-visible">
         <button
           type="button"
           aria-label="Ações do usuário"
           className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm transition hover:bg-slate-800"
-          onClick={() => setMenuOpenId(open ? null : user.id)}
+          onClick={(event) => toggleActionMenu(event, user.id, open)}
         >
           <MoreHorizontal size={18} />
         </button>
-        {open ? (
+        {open && menuPosition ? (
           <>
-            <button type="button" className="fixed inset-0 z-10 cursor-default" onClick={() => setMenuOpenId(null)} aria-label="Fechar menu" />
-            <div className="absolute right-0 top-12 z-20 min-w-[190px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.12)] md:bottom-12 md:top-auto">
+            <button type="button" className="fixed inset-0 z-40 cursor-default" onClick={() => { setMenuOpenId(null); setMenuPosition(null); }} aria-label="Fechar menu" />
+            <div
+              className="fixed z-50 min-w-[210px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.12)]"
+              style={{ top: menuPosition.top, left: menuPosition.left }}
+            >
               <button type="button" className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50" onClick={() => openEditUser(user)}>
                 <Pencil size={16} /> Editar usuário
               </button>
               <button type="button" className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50" onClick={() => openRoleModal(user)}>
                 <ShieldCheck size={16} /> Alterar cargo
               </button>
-              <button type="button" className={`flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium transition ${user.active === false ? 'text-emerald-700 hover:bg-emerald-50' : 'text-amber-700 hover:bg-amber-50'}`} onClick={() => { setMenuOpenId(null); toggleActive(user); }}>
+              <button type="button" className={`flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium transition ${user.active === false ? 'text-emerald-700 hover:bg-emerald-50' : 'text-amber-700 hover:bg-amber-50'}`} onClick={() => { setMenuOpenId(null); setMenuPosition(null); toggleActive(user); }}>
                 <UserX size={16} /> {user.active === false ? 'Ativar usuário' : 'Desativar'}
               </button>
               <button type="button" className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-rose-600 transition hover:bg-rose-50" onClick={() => handleDeleteUser(user)}>
