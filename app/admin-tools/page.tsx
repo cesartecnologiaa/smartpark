@@ -1,8 +1,20 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { deleteDoc, getDocs, updateDoc } from 'firebase/firestore';
 import {
+  deleteDoc,
+  DocumentSnapshot,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+  startAfter,
+  updateDoc,
+  where,
+} from 'firebase/firestore';
+import {
+  ChevronLeft,
+  ChevronRight,
   PencilLine,
   RefreshCw,
   Search,
@@ -10,6 +22,7 @@ import {
   Trash2,
   Wallet,
 } from 'lucide-react';
+import Image from 'next/image';
 import PageHeader from '@/components/PageHeader';
 import RoleGuard from '@/components/RoleGuard';
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,70 +34,134 @@ import { money, shortDateTime } from '@/utils/format';
 type TicketRow = ParkingTicket;
 type CashRow = CashRegister;
 
+const TICKETS_PAGE_SIZE = 20;
+const CASH_PAGE_SIZE = 12;
+
 function toIsoValue(value?: string) {
   return value || '';
 }
 
-function sortTickets(items: TicketRow[]) {
-  return [...items].sort((a, b) =>
-    toIsoValue(b.exitAt || b.entryAt).localeCompare(toIsoValue(a.exitAt || a.entryAt))
-  );
+function formatDateInput(value?: string) {
+  return value ? value.slice(0, 10) : '';
 }
 
-function sortCash(items: CashRow[]) {
-  return [...items].sort((a, b) => toIsoValue(b.openedAt).localeCompare(toIsoValue(a.openedAt)));
+function endOfDay(date: string) {
+  return `${date}T23:59:59.999`;
 }
 
 export default function AdminToolsPage() {
   const { profile } = useAuth();
   const [tickets, setTickets] = useState<TicketRow[]>([]);
   const [cashRegisters, setCashRegisters] = useState<CashRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingTickets, setLoadingTickets] = useState(true);
+  const [loadingCash, setLoadingCash] = useState(true);
   const [searchCode, setSearchCode] = useState('');
+  const [ticketStartDate, setTicketStartDate] = useState('');
+  const [ticketEndDate, setTicketEndDate] = useState('');
+  const [cashStartDate, setCashStartDate] = useState('');
+  const [cashEndDate, setCashEndDate] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [savingId, setSavingId] = useState<string | null>(null);
   const [editingTicket, setEditingTicket] = useState<TicketRow | null>(null);
   const [newValue, setNewValue] = useState('');
   const [manualCashValue, setManualCashValue] = useState('');
+  const [ticketPage, setTicketPage] = useState(1);
+  const [cashPage, setCashPage] = useState(1);
+  const [ticketHasNextPage, setTicketHasNextPage] = useState(false);
+  const [cashHasNextPage, setCashHasNextPage] = useState(false);
+  const [ticketCursor, setTicketCursor] = useState<DocumentSnapshot | null>(null);
+  const [cashCursor, setCashCursor] = useState<DocumentSnapshot | null>(null);
+  const [ticketHistory, setTicketHistory] = useState<(DocumentSnapshot | null)[]>([null]);
+  const [cashHistory, setCashHistory] = useState<(DocumentSnapshot | null)[]>([null]);
 
-  async function loadData() {
+  async function loadTickets(pageCursor: DocumentSnapshot | null = null, resetHistory = false) {
     if (!profile?.tenantId) {
-      setLoading(false);
+      setLoadingTickets(false);
       return;
     }
 
-    setLoading(true);
+    setLoadingTickets(true);
     setError('');
 
     try {
-      const [ticketSnap, cashSnap] = await Promise.all([
-        getDocs(tenantCollection(db, profile.tenantId, 'parkingTickets')),
-        getDocs(tenantCollection(db, profile.tenantId, 'cashRegisters')),
-      ]);
+      const constraints: any[] = [orderBy('entryAt', 'desc')];
 
-      const loadedTickets = ticketSnap.docs.map((item) => ({
+      if (ticketStartDate) constraints.push(where('entryAt', '>=', `${ticketStartDate}T00:00:00.000`));
+      if (ticketEndDate) constraints.push(where('entryAt', '<=', endOfDay(ticketEndDate)));
+      if (pageCursor) constraints.push(startAfter(pageCursor));
+      constraints.push(limit(TICKETS_PAGE_SIZE + 1));
+
+      const ticketSnap = await getDocs(query(tenantCollection(db, profile.tenantId, 'parkingTickets'), ...constraints));
+      const docs = ticketSnap.docs;
+      const visibleDocs = docs.slice(0, TICKETS_PAGE_SIZE);
+
+      const loadedTickets = visibleDocs.map((item) => ({
         id: item.id,
         ...(item.data() as Omit<TicketRow, 'id'>),
       }));
 
-      const loadedCash = cashSnap.docs.map((item) => ({
+      setTickets(loadedTickets);
+      setTicketHasNextPage(docs.length > TICKETS_PAGE_SIZE);
+      setTicketCursor(visibleDocs.length ? visibleDocs[visibleDocs.length - 1] : null);
+      if (resetHistory) setTicketHistory([null]);
+    } catch (err: any) {
+      setError(err?.message || 'Não foi possível carregar os tickets administrativos.');
+    } finally {
+      setLoadingTickets(false);
+    }
+  }
+
+  async function loadCash(pageCursor: DocumentSnapshot | null = null, resetHistory = false) {
+    if (!profile?.tenantId) {
+      setLoadingCash(false);
+      return;
+    }
+
+    setLoadingCash(true);
+    setError('');
+
+    try {
+      const constraints: any[] = [orderBy('openedAt', 'desc')];
+
+      if (cashStartDate) constraints.push(where('openedAt', '>=', `${cashStartDate}T00:00:00.000`));
+      if (cashEndDate) constraints.push(where('openedAt', '<=', endOfDay(cashEndDate)));
+      if (pageCursor) constraints.push(startAfter(pageCursor));
+      constraints.push(limit(CASH_PAGE_SIZE + 1));
+
+      const cashSnap = await getDocs(query(tenantCollection(db, profile.tenantId, 'cashRegisters'), ...constraints));
+      const docs = cashSnap.docs;
+      const visibleDocs = docs.slice(0, CASH_PAGE_SIZE);
+
+      const loadedCash = visibleDocs.map((item) => ({
         id: item.id,
         ...(item.data() as Omit<CashRow, 'id'>),
       }));
 
-      setTickets(sortTickets(loadedTickets));
-      setCashRegisters(sortCash(loadedCash));
+      setCashRegisters(loadedCash);
+      setCashHasNextPage(docs.length > CASH_PAGE_SIZE);
+      setCashCursor(visibleDocs.length ? visibleDocs[visibleDocs.length - 1] : null);
+      if (resetHistory) setCashHistory([null]);
     } catch (err: any) {
-      setError(err?.message || 'Não foi possível carregar os dados administrativos.');
+      setError(err?.message || 'Não foi possível carregar os caixas administrativos.');
     } finally {
-      setLoading(false);
+      setLoadingCash(false);
     }
   }
 
+  async function reloadCurrentPages() {
+    setTicketPage(1);
+    setCashPage(1);
+    await Promise.all([loadTickets(null, true), loadCash(null, true)]);
+  }
+
   useEffect(() => {
-    loadData();
-  }, [profile?.tenantId]);
+    if (!profile?.tenantId) return;
+    setTicketPage(1);
+    setCashPage(1);
+    loadTickets(null, true);
+    loadCash(null, true);
+  }, [profile?.tenantId, ticketStartDate, ticketEndDate, cashStartDate, cashEndDate]);
 
   const filteredTickets = useMemo(() => {
     const term = searchCode.trim().toUpperCase();
@@ -130,7 +207,7 @@ export default function AdminToolsPage() {
     try {
       await deleteDoc(tenantDoc(db, profile.tenantId, 'parkingTickets', ticket.id));
       setMessage(`Ticket ${ticket.shortTicket} excluído com sucesso.`);
-      await loadData();
+      await loadTickets(ticketHistory[ticketPage - 1] || null);
     } catch (err: any) {
       setError(err?.message || 'Não foi possível excluir o ticket.');
     } finally {
@@ -150,7 +227,7 @@ export default function AdminToolsPage() {
     try {
       await deleteDoc(tenantDoc(db, profile.tenantId, 'cashRegisters', cash.id));
       setMessage(`Caixa ${cash.id} excluído com sucesso.`);
-      await loadData();
+      await loadCash(cashHistory[cashPage - 1] || null);
     } catch (err: any) {
       setError(err?.message || 'Não foi possível excluir o caixa.');
     } finally {
@@ -190,7 +267,10 @@ export default function AdminToolsPage() {
 
       setMessage(`Valor do ticket ${editingTicket.shortTicket} atualizado com sucesso.`);
       closeEditor();
-      await loadData();
+      await Promise.all([
+        loadTickets(ticketHistory[ticketPage - 1] || null),
+        loadCash(cashHistory[cashPage - 1] || null),
+      ]);
     } catch (err: any) {
       setError(err?.message || 'Não foi possível atualizar o valor do ticket.');
     } finally {
@@ -217,12 +297,44 @@ export default function AdminToolsPage() {
       });
       setMessage(`Caixa ${relatedCash.id} ajustado com sucesso.`);
       closeEditor();
-      await loadData();
+      await loadCash(cashHistory[cashPage - 1] || null);
     } catch (err: any) {
       setError(err?.message || 'Não foi possível atualizar o caixa.');
     } finally {
       setSavingId(null);
     }
+  }
+
+  async function goToNextTicketsPage() {
+    if (!ticketHasNextPage || !ticketCursor) return;
+    const nextHistory = [...ticketHistory, ticketCursor];
+    setTicketHistory(nextHistory);
+    setTicketPage((prev) => prev + 1);
+    await loadTickets(ticketCursor);
+  }
+
+  async function goToPreviousTicketsPage() {
+    if (ticketPage <= 1) return;
+    const previousCursor = ticketHistory[ticketPage - 2] || null;
+    setTicketPage((prev) => prev - 1);
+    setTicketHistory((prev) => prev.slice(0, -1));
+    await loadTickets(previousCursor);
+  }
+
+  async function goToNextCashPage() {
+    if (!cashHasNextPage || !cashCursor) return;
+    const nextHistory = [...cashHistory, cashCursor];
+    setCashHistory(nextHistory);
+    setCashPage((prev) => prev + 1);
+    await loadCash(cashCursor);
+  }
+
+  async function goToPreviousCashPage() {
+    if (cashPage <= 1) return;
+    const previousCursor = cashHistory[cashPage - 2] || null;
+    setCashPage((prev) => prev - 1);
+    setCashHistory((prev) => prev.slice(0, -1));
+    await loadCash(previousCursor);
   }
 
   return (
@@ -232,7 +344,7 @@ export default function AdminToolsPage() {
           title="Admin Tools"
           subtitle="Ferramentas avançadas para localizar, ajustar e remover tickets e caixas sem atalho no menu lateral."
           actions={
-            <button className="secondary-button w-full sm:w-auto" onClick={loadData}>
+            <button className="secondary-button w-full sm:w-auto" onClick={reloadCurrentPages}>
               <RefreshCw size={16} />
               Atualizar
             </button>
@@ -240,19 +352,48 @@ export default function AdminToolsPage() {
         />
 
         <div className="panel-card mb-6 p-4 sm:p-6">
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr),auto] lg:items-center">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input
-                className="app-input pl-11"
-                value={searchCode}
-                onChange={(e) => setSearchCode(e.target.value)}
-                placeholder="Pesquisar ticket pelo código, placa, ID ou status"
-              />
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr),minmax(0,0.85fr),minmax(0,0.85fr)] xl:items-end">
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-700">Pesquisar ticket</label>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input
+                  className="app-input pl-11"
+                  value={searchCode}
+                  onChange={(e) => setSearchCode(e.target.value)}
+                  placeholder="Pesquisar ticket pelo código, placa, ID ou status"
+                />
+              </div>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-              {filteredTickets.length} ticket(s) encontrado(s)
+
+            <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+              <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800">
+                <Image src="/filter-descending-sort-icon.svg" alt="Filtro" width={18} height={18} />
+                Filtro de tickets por data
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                <input className="app-input" type="date" value={ticketStartDate} onChange={(e) => setTicketStartDate(e.target.value)} />
+                <input className="app-input" type="date" value={ticketEndDate} onChange={(e) => setTicketEndDate(e.target.value)} />
+              </div>
             </div>
+
+            <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+              <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800">
+                <Image src="/filter-descending-sort-icon.svg" alt="Filtro" width={18} height={18} />
+                Filtro de caixas por data
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                <input className="app-input" type="date" value={cashStartDate} onChange={(e) => setCashStartDate(e.target.value)} />
+                <input className="app-input" type="date" value={cashEndDate} onChange={(e) => setCashEndDate(e.target.value)} />
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-3 text-sm text-slate-600">
+            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">Página de tickets: {ticketPage}</div>
+            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">{filteredTickets.length} ticket(s) nesta página</div>
+            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">Página de caixas: {cashPage}</div>
+            <button className="secondary-button py-2" onClick={() => { setTicketStartDate(''); setTicketEndDate(''); setCashStartDate(''); setCashEndDate(''); }}>Limpar filtros</button>
           </div>
 
           {message ? <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{message}</div> : null}
@@ -261,15 +402,25 @@ export default function AdminToolsPage() {
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr),minmax(0,0.9fr)]">
           <section className="panel-card p-4 sm:p-6">
-            <div className="mb-4 flex items-center gap-2">
-              <div className="icon-soft-blue"><Ticket size={18} /></div>
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">Tickets</h2>
-                <p className="text-sm text-slate-500">Busca por código, ajuste de valor e exclusão.</p>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <div className="icon-soft-blue"><Ticket size={18} /></div>
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">Tickets</h2>
+                  <p className="text-sm text-slate-500">Busca por código, ajuste de valor, paginação e exclusão.</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button className="secondary-button py-2" onClick={goToPreviousTicketsPage} disabled={ticketPage === 1 || loadingTickets}>
+                  <ChevronLeft size={16} />
+                </button>
+                <button className="secondary-button py-2" onClick={goToNextTicketsPage} disabled={!ticketHasNextPage || loadingTickets}>
+                  <ChevronRight size={16} />
+                </button>
               </div>
             </div>
 
-            {loading ? (
+            {loadingTickets ? (
               <div className="empty-state min-h-[260px]">
                 <p className="text-sm text-slate-500">Carregando tickets...</p>
               </div>
@@ -291,7 +442,6 @@ export default function AdminToolsPage() {
                           <p><span className="font-semibold text-slate-900">Entrada:</span> {shortDateTime(ticket.entryAt)}</p>
                           <p><span className="font-semibold text-slate-900">Saída:</span> {ticket.exitAt ? shortDateTime(ticket.exitAt) : '-'}</p>
                           <p><span className="font-semibold text-slate-900">Pagamento:</span> {ticket.paymentMethod || '-'}</p>
-                          <p className="break-all"><span className="font-semibold text-slate-900">Caixa:</span> {ticket.closedCashRegisterId || '-'}</p>
                         </div>
                       </div>
 
@@ -321,15 +471,25 @@ export default function AdminToolsPage() {
           </section>
 
           <section className="panel-card p-4 sm:p-6">
-            <div className="mb-4 flex items-center gap-2">
-              <div className="icon-soft-green"><Wallet size={18} /></div>
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">Caixas</h2>
-                <p className="text-sm text-slate-500">Consulta rápida e exclusão manual de caixa.</p>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <div className="icon-soft-green"><Wallet size={18} /></div>
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">Caixas</h2>
+                  <p className="text-sm text-slate-500">Consulta rápida, paginação e exclusão manual de caixa.</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button className="secondary-button py-2" onClick={goToPreviousCashPage} disabled={cashPage === 1 || loadingCash}>
+                  <ChevronLeft size={16} />
+                </button>
+                <button className="secondary-button py-2" onClick={goToNextCashPage} disabled={!cashHasNextPage || loadingCash}>
+                  <ChevronRight size={16} />
+                </button>
               </div>
             </div>
 
-            {loading ? (
+            {loadingCash ? (
               <div className="empty-state min-h-[260px]">
                 <p className="text-sm text-slate-500">Carregando caixas...</p>
               </div>
@@ -383,7 +543,6 @@ export default function AdminToolsPage() {
 
               <div className="mt-5 rounded-[22px] bg-slate-50 p-4 text-sm text-slate-600">
                 <p><span className="font-semibold text-slate-900">Valor atual:</span> {money(editingTicket.amountCharged || 0)}</p>
-                <p className="mt-1 break-all"><span className="font-semibold text-slate-900">Caixa vinculado:</span> {editingTicket.closedCashRegisterId || '-'}</p>
                 {relatedCash ? (
                   <p className="mt-1"><span className="font-semibold text-slate-900">Receita atual do caixa:</span> {money(relatedCash.revenueByTickets || 0)}</p>
                 ) : null}
