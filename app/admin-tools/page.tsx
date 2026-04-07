@@ -26,6 +26,7 @@ import Image from 'next/image';
 import PageHeader from '@/components/PageHeader';
 import RoleGuard from '@/components/RoleGuard';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 import { db } from '@/lib/firebase';
 import { tenantCollection, tenantDoc } from '@/lib/tenant';
 import { CashRegister, ParkingTicket } from '@/types';
@@ -51,6 +52,7 @@ function endOfDay(date: string) {
 
 export default function AdminToolsPage() {
   const { profile } = useAuth();
+  const notifications = useNotifications();
   const [tickets, setTickets] = useState<TicketRow[]>([]);
   const [cashRegisters, setCashRegisters] = useState<CashRow[]>([]);
   const [loadingTickets, setLoadingTickets] = useState(true);
@@ -60,7 +62,6 @@ export default function AdminToolsPage() {
   const [ticketEndDate, setTicketEndDate] = useState('');
   const [cashStartDate, setCashStartDate] = useState('');
   const [cashEndDate, setCashEndDate] = useState('');
-  const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [savingId, setSavingId] = useState<string | null>(null);
   const [editingTicket, setEditingTicket] = useState<TicketRow | null>(null);
@@ -87,7 +88,7 @@ export default function AdminToolsPage() {
     setError('');
 
     try {
-      const constraints: any[] = [orderBy('entryAt', 'desc')];
+      const constraints: any[] = [orderBy('entryAt', 'asc')];
 
       if (ticketStartDate) constraints.push(where('entryAt', '>=', `${ticketStartDate}T00:00:00.000`));
       if (ticketEndDate) constraints.push(where('entryAt', '<=', endOfDay(ticketEndDate)));
@@ -108,7 +109,9 @@ export default function AdminToolsPage() {
       setTicketCursor(visibleDocs.length ? visibleDocs[visibleDocs.length - 1] : null);
       if (resetHistory) setTicketHistory([null]);
     } catch (err: any) {
-      setError(err?.message || 'Não foi possível carregar os tickets administrativos.');
+      const msg = err?.message || 'Não foi possível carregar os tickets administrativos.';
+      setError(msg);
+      notifications.error(msg, 'Falha ao carregar tickets');
     } finally {
       setLoadingTickets(false);
     }
@@ -124,7 +127,7 @@ export default function AdminToolsPage() {
     setError('');
 
     try {
-      const constraints: any[] = [orderBy('openedAt', 'desc')];
+      const constraints: any[] = [orderBy('openedAt', 'asc')];
 
       if (cashStartDate) constraints.push(where('openedAt', '>=', `${cashStartDate}T00:00:00.000`));
       if (cashEndDate) constraints.push(where('openedAt', '<=', endOfDay(cashEndDate)));
@@ -145,7 +148,9 @@ export default function AdminToolsPage() {
       setCashCursor(visibleDocs.length ? visibleDocs[visibleDocs.length - 1] : null);
       if (resetHistory) setCashHistory([null]);
     } catch (err: any) {
-      setError(err?.message || 'Não foi possível carregar os caixas administrativos.');
+      const msg = err?.message || 'Não foi possível carregar os caixas administrativos.';
+      setError(msg);
+      notifications.error(msg, 'Falha ao carregar caixas');
     } finally {
       setLoadingCash(false);
     }
@@ -187,7 +192,6 @@ export default function AdminToolsPage() {
     setEditingTicket(ticket);
     setNewValue(String(ticket.amountCharged || 0));
     setManualCashValue('');
-    setMessage('');
     setError('');
   }
 
@@ -204,14 +208,15 @@ export default function AdminToolsPage() {
 
     setSavingId(ticket.id);
     setError('');
-    setMessage('');
 
     try {
       await deleteDoc(tenantDoc(db, profile.tenantId, 'parkingTickets', ticket.id));
-      setMessage(`Ticket ${ticket.shortTicket} excluído com sucesso.`);
+      notifications.success(`Ticket ${ticket.shortTicket} excluído com sucesso.`, 'Exclusão concluída');
       await loadTickets(ticketHistory[ticketPage - 1] || null);
     } catch (err: any) {
-      setError(err?.message || 'Não foi possível excluir o ticket.');
+      const msg = err?.message || 'Não foi possível excluir o ticket.';
+      setError(msg);
+      notifications.error(msg, 'Erro ao excluir ticket');
     } finally {
       setSavingId(null);
     }
@@ -224,14 +229,15 @@ export default function AdminToolsPage() {
 
     setSavingId(cash.id);
     setError('');
-    setMessage('');
 
     try {
       await deleteDoc(tenantDoc(db, profile.tenantId, 'cashRegisters', cash.id));
-      setMessage(`Caixa ${cash.id} excluído com sucesso.`);
+      notifications.success(`Caixa ${cash.id} excluído com sucesso.`, 'Exclusão concluída');
       await loadCash(cashHistory[cashPage - 1] || null);
     } catch (err: any) {
-      setError(err?.message || 'Não foi possível excluir o caixa.');
+      const msg = err?.message || 'Não foi possível excluir o caixa.';
+      setError(msg);
+      notifications.error(msg, 'Erro ao excluir caixa');
     } finally {
       setSavingId(null);
     }
@@ -242,13 +248,14 @@ export default function AdminToolsPage() {
 
     const parsedNewValue = Number(String(newValue).replace(',', '.'));
     if (!Number.isFinite(parsedNewValue) || parsedNewValue < 0) {
-      setError('Informe um valor válido para o ticket.');
+      const msg = 'Informe um valor válido para o ticket.';
+      setError(msg);
+      notifications.warning(msg, 'Valor inválido');
       return;
     }
 
     setSavingId(editingTicket.id);
     setError('');
-    setMessage('');
 
     try {
       const oldValue = Number(editingTicket.amountCharged || 0);
@@ -267,14 +274,16 @@ export default function AdminToolsPage() {
         }
       }
 
-      setMessage(`Valor do ticket ${editingTicket.shortTicket} atualizado com sucesso.`);
+      notifications.success(`Valor do ticket ${editingTicket.shortTicket} atualizado com sucesso.`, 'Ticket atualizado');
       closeEditor();
       await Promise.all([
         loadTickets(ticketHistory[ticketPage - 1] || null),
         loadCash(cashHistory[cashPage - 1] || null),
       ]);
     } catch (err: any) {
-      setError(err?.message || 'Não foi possível atualizar o valor do ticket.');
+      const msg = err?.message || 'Não foi possível atualizar o valor do ticket.';
+      setError(msg);
+      notifications.error(msg, 'Erro ao atualizar ticket');
     } finally {
       setSavingId(null);
     }
@@ -285,23 +294,26 @@ export default function AdminToolsPage() {
 
     const parsedValue = Number(String(manualCashValue).replace(',', '.'));
     if (!Number.isFinite(parsedValue) || parsedValue < 0) {
-      setError('Informe um valor válido para o caixa.');
+      const msg = 'Informe um valor válido para o caixa.';
+      setError(msg);
+      notifications.warning(msg, 'Valor inválido');
       return;
     }
 
     setSavingId(relatedCash.id);
     setError('');
-    setMessage('');
 
     try {
       await updateDoc(tenantDoc(db, profile.tenantId, 'cashRegisters', relatedCash.id), {
         revenueByTickets: parsedValue,
       });
-      setMessage(`Caixa ${relatedCash.id} ajustado com sucesso.`);
+      notifications.success(`Caixa ${relatedCash.id} ajustado com sucesso.`, 'Caixa atualizado');
       closeEditor();
       await loadCash(cashHistory[cashPage - 1] || null);
     } catch (err: any) {
-      setError(err?.message || 'Não foi possível atualizar o caixa.');
+      const msg = err?.message || 'Não foi possível atualizar o caixa.';
+      setError(msg);
+      notifications.error(msg, 'Erro ao atualizar caixa');
     } finally {
       setSavingId(null);
     }
@@ -368,27 +380,22 @@ export default function AdminToolsPage() {
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-3 text-sm text-slate-600">
-              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">Página de tickets: {ticketPage}</div>
-              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">{filteredTickets.length} ticket(s) nesta página</div>
-              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">Página de caixas: {cashPage}</div>
-              <button
-                className="secondary-button py-2"
-                onClick={() => {
-                  setTicketStartDate('');
-                  setTicketEndDate('');
-                  setCashStartDate('');
-                  setCashEndDate('');
-                  setShowTicketFilters(false);
-                  setShowCashFilters(false);
-                }}
-              >
-                Limpar filtros
-              </button>
-            </div>
+            <button
+              className="secondary-button py-2"
+              onClick={() => {
+                setTicketStartDate('');
+                setTicketEndDate('');
+                setCashStartDate('');
+                setCashEndDate('');
+                setShowTicketFilters(false);
+                setShowCashFilters(false);
+                notifications.info('Os filtros de tickets e caixas foram limpos.', 'Filtros reiniciados');
+              }}
+            >
+              Limpar filtros
+            </button>
           </div>
 
-          {message ? <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{message}</div> : null}
           {error ? <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
         </div>
 
@@ -399,7 +406,7 @@ export default function AdminToolsPage() {
                 <div className="icon-soft-blue"><Ticket size={18} /></div>
                 <div>
                   <h2 className="text-lg font-semibold text-slate-900">Tickets</h2>
-                  <p className="text-sm text-slate-500">Busca por código, ajuste de valor, paginação e exclusão.</p>
+                  <p className="text-sm text-slate-500">Busca por código, ajuste de valor e paginação. Página {ticketPage}.</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -475,10 +482,17 @@ export default function AdminToolsPage() {
                 <div className="icon-soft-green"><Wallet size={18} /></div>
                 <div>
                   <h2 className="text-lg font-semibold text-slate-900">Caixas</h2>
-                  <p className="text-sm text-slate-500">Consulta rápida, paginação e exclusão manual de caixa.</p>
+                  <p className="text-sm text-slate-500">Consulta rápida, paginação e exclusão manual. Página {cashPage}.</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  className="secondary-button px-3 py-2"
+                  onClick={() => setShowCashFilters(true)}
+                  aria-label="Abrir filtros de caixas"
+                >
+                  <Image src="/filter-descending-sort-icon.svg" alt="Filtro" width={18} height={18} />
+                </button>
                 <button className="secondary-button py-2" onClick={goToPreviousCashPage} disabled={cashPage === 1 || loadingCash}>
                   <ChevronLeft size={16} />
                 </button>
@@ -556,11 +570,12 @@ export default function AdminToolsPage() {
                   onClick={() => {
                     setTicketStartDate('');
                     setTicketEndDate('');
+                    notifications.info('Filtro de tickets limpo.', 'Tickets');
                   }}
                 >
                   Limpar
                 </button>
-                <button className="primary-button py-2" onClick={() => setShowTicketFilters(false)}>Aplicar</button>
+                <button className="primary-button py-2" onClick={() => { setShowTicketFilters(false); notifications.info('Filtro de tickets aplicado com sucesso.', 'Tickets filtrados'); }}>Aplicar</button>
               </div>
             </div>
           </div>
@@ -594,11 +609,12 @@ export default function AdminToolsPage() {
                   onClick={() => {
                     setCashStartDate('');
                     setCashEndDate('');
+                    notifications.info('Filtro de caixas limpo.', 'Caixas');
                   }}
                 >
                   Limpar
                 </button>
-                <button className="primary-button py-2" onClick={() => setShowCashFilters(false)}>Aplicar</button>
+                <button className="primary-button py-2" onClick={() => { setShowCashFilters(false); notifications.info('Filtro de caixas aplicado com sucesso.', 'Caixas filtrados'); }}>Aplicar</button>
               </div>
             </div>
           </div>
