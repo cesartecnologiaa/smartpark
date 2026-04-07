@@ -34,7 +34,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       return;
     }
 
-    if (profile && isSupportRoute && profile.role !== 'suporte' && profile.role !== 'admin') {
+    if (profile && isSupportRoute && profile.role !== 'suporte') {
       router.replace('/');
     }
   }, [isPrintRoute, isPublic, isSupportRoute, loading, pathname, profile, router]);

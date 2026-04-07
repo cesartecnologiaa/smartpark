@@ -9,16 +9,24 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
+    function currentRole() {
+      return me().role != null ? me().role : (me().cargo != null ? me().cargo : '');
+    }
+
     function normalizedTenantId() {
       return me().tenantId != null ? me().tenantId : 'default';
     }
 
+    function isSupport() {
+      return signedIn() && currentRole() == 'suporte' && me().active != false;
+    }
+
     function isAdmin() {
-      return signedIn() && me().role == 'admin' && me().active != false;
+      return signedIn() && (currentRole() == 'admin' || currentRole() == 'suporte') && me().active != false;
     }
 
     function isOperator() {
-      return signedIn() && (me().role == 'admin' || me().role == 'vendedor') && me().active != false;
+      return signedIn() && (currentRole() == 'admin' || currentRole() == 'suporte' || currentRole() == 'vendedor') && me().active != false;
     }
 
     function tenantMatches(tenantId) {
@@ -57,6 +65,17 @@ service cloud.firestore {
     match /monthlyCustomers/{docId} {
       allow read: if isOperator();
       allow create, update: if isOperator();
+    }
+
+    match /client_tokens/{tokenId} {
+      allow list, create, update, delete: if isSupport();
+      allow get: if isSupport() || (resource.data.status == 'PENDENTE' && resource.data.expiraEm > request.time);
+      allow update: if isSupport() || (
+        signedIn()
+        && resource.data.status == 'PENDENTE'
+        && resource.data.expiraEm > request.time
+        && request.resource.data.status == 'UTILIZADO'
+      );
     }
 
     match /tenants/{tenantId}/{document=**} {
