@@ -195,6 +195,19 @@ export default function LoginPage() {
                 </button>
               </form>
 
+              <div className="mt-5 rounded-[28px] border border-blue-100 bg-blue-50/70 p-4 text-center">
+                <p className="text-sm font-medium text-slate-700">Primeiro acesso do cliente</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  Use o token gerado pelo suporte para criar sua conta e acessar o sistema.
+                </p>
+                <a
+                  href="/primeiro-acesso"
+                  className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-2xl border border-blue-200 bg-white px-4 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
+                >
+                  Fazer primeiro acesso
+                </a>
+              </div>
+
               <div className="mt-8 border-t border-slate-100 pt-5 text-center">
                 <p className="text-xs leading-5 text-slate-400">
                   Desenvolvido por Cesar Soluções em Tecnologia
