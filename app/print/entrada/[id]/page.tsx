@@ -148,7 +148,7 @@ export default function PrintEntradaPage({ params }: { params: { id: string } })
   const is58 = (settings?.printerWidth || '80mm') === '58mm';
   const styles = useMemo(() => ({
     pageWidth: is58 ? '58mm' : '80mm',
-    padding: is58 ? '2.6mm 2mm 2.8mm' : '4mm 3.5mm 3mm',
+    padding: is58 ? '2.8mm 2.2mm 5.8mm' : '4mm 3.5mm 3mm',
     companyFont: is58 ? '5.5mm' : '5.6mm',
     companySub: is58 ? '3.1mm' : '2.9mm',
     metaFont: is58 ? '2.8mm' : '2.8mm',
@@ -159,10 +159,10 @@ export default function PrintEntradaPage({ params }: { params: { id: string } })
     footerFont: is58 ? '2.65mm' : '2.6mm',
     sectionGap: is58 ? '4mm' : '3mm',
     rowGap: is58 ? '2.2mm' : '1.45mm',
-    footerGap: is58 ? '3.2mm' : '1.6mm',
-    footerLineGap: is58 ? '1.2mm' : '0.6mm',
+    footerGap: is58 ? '5.2mm' : '1.6mm',
+    footerLineGap: is58 ? '1.8mm' : '0.6mm',
     qrSize: is58 ? '27mm' : '31mm',
-    cutHeight: is58 ? '10mm' : '14mm',
+    cutHeight: is58 ? '18mm' : '14mm',
   }), [is58]);
 
   if (!ticket) {
@@ -210,7 +210,7 @@ export default function PrintEntradaPage({ params }: { params: { id: string } })
 
       <style jsx global>{`
         .print-ticket-page { display: flex; justify-content: center; padding: 0; background: #eef2f7; min-height: 100vh; }
-        .print-ticket { width: ${styles.pageWidth}; background: #fff; color: #111827; padding: ${styles.padding}; box-sizing: border-box; font-family: Arial, Helvetica, sans-serif; box-shadow: ${is58 ? 'none' : '0 0 0 1px #e5e7eb, 0 8px 20px rgba(15, 23, 42, 0.08)'}; }
+        .print-ticket { width: ${styles.pageWidth}; background: #fff; color: #111827; padding: ${styles.padding}; box-sizing: border-box; font-family: Arial, Helvetica, sans-serif; overflow: visible; box-shadow: ${is58 ? 'none' : '0 0 0 1px #e5e7eb, 0 8px 20px rgba(15, 23, 42, 0.08)'}; }
         .ticket-header { text-align: center; margin-bottom: 2.2mm; }
         .ticket-company { text-align: center; font-size: ${styles.companyFont}; font-weight: 700; line-height: 1.1; margin-bottom: 1.3mm; word-break: break-word; white-space: normal; }
         .ticket-company-sub { font-size: ${styles.companySub}; font-weight: 600; line-height: 1.2; color: #000; margin-bottom: 1mm; }
@@ -223,19 +223,20 @@ export default function PrintEntradaPage({ params }: { params: { id: string } })
         .ticket-row { display: flex; justify-content: space-between; align-items: flex-start; gap: ${is58 ? '2.4mm' : '1.8mm'}; margin: ${styles.rowGap} 0; font-size: ${styles.rowFont}; line-height: ${is58 ? '1.42' : '1.3'}; }
         .ticket-row-label { color: #000; font-weight: 600; }
         .ticket-row-value { color: #111827; font-weight: 700; text-align: right; }
-        .ticket-footer { text-align: center; font-size: ${styles.footerFont}; line-height: ${is58 ? '1.35' : '1.2'}; color: #000; font-weight: 600; margin-top: ${styles.footerGap}; }
+        .ticket-footer { text-align: center; font-size: ${styles.footerFont}; line-height: ${is58 ? '1.45' : '1.2'}; color: #000; font-weight: 600; margin-top: ${styles.footerGap}; padding-bottom: ${is58 ? '2.8mm' : '0'}; }
         .ticket-footer p { margin: 0 0 ${styles.footerLineGap}; }
-        .cut-space { height: ${styles.cutHeight}; }
+        .cut-space { height: ${styles.cutHeight}; min-height: ${styles.cutHeight}; }
         .rawbt-toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: center; background: #1e293b; color: white; padding: 12px 20px; position: sticky; top: 0; z-index: 50; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .rawbt-toolbar strong { display: block; font-size: 14px; color: #38bdf8; }
         .rawbt-toolbar p { margin: 2px 0 0; font-size: 11px; color: #94a3b8; line-height: 1.3; }
         .rawbt-actions { display: flex; gap: 8px; }
         .rawbt-actions button { background: #38bdf8; color: #0f172a; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s; }
         .rawbt-actions button:active { transform: scale(0.95); opacity: 0.9; }
+        @page { size: ${styles.pageWidth} auto; margin: 0; }
         @media print {
           .rawbt-toolbar { display: none !important; }
-          .print-ticket-page { display: block; background: #fff; min-height: auto; }
-          .print-ticket { box-shadow: none; margin: 0; width: 100%; }
+          .print-ticket-page { display: block; background: #fff; min-height: auto; padding-bottom: 0 !important; }
+          .print-ticket { box-shadow: none; margin: 0; width: 100%; overflow: visible; page-break-inside: avoid; break-inside: avoid; }
         }
       `}</style>
     </>
