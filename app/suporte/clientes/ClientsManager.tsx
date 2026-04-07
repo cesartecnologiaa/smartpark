@@ -12,7 +12,7 @@ import {
   setDoc,
   updateDoc,
 } from 'firebase/firestore';
-import { Copy, Eye, EyeOff, LifeBuoy, Loader2, MoreVertical, Plus, ShieldX, Trash2 } from 'lucide-react';
+import { Copy, Eye, EyeOff, LifeBuoy, Loader2, MoreHorizontal, Plus, ShieldX, Trash2 } from 'lucide-react';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
@@ -342,12 +342,12 @@ export default function ClientsManager() {
                         <td className="px-4 py-4 text-center">
                           <button
                             aria-label="Abrir ações do token"
-                            className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                             disabled={revokingId === item.id}
                             onClick={() => setActionItem(item)}
                             type="button"
                           >
-                            <MoreVertical size={16} />
+                            <MoreHorizontal size={18} strokeWidth={2.25} />
                           </button>
                         </td>
                       </tr>
@@ -407,7 +407,7 @@ export default function ClientsManager() {
 
       {modalOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 px-4">
-          <div className="panel-card w-full max-w-xl rounded-3xl p-6">
+          <div className="panel-card w-full max-w-md rounded-2xl p-5 sm:p-6">
             {generatedToken ? (
               <div className="space-y-5">
                 <div>
@@ -415,7 +415,7 @@ export default function ClientsManager() {
                   <p className="mt-2 text-sm text-slate-500">Copie este token e envie para o cliente concluir o primeiro acesso.</p>
                 </div>
 
-                <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                <div className="rounded-xl border border-blue-100 bg-blue-50 p-3.5">
                   <div className="break-all font-mono text-sm font-semibold text-blue-800">{generatedToken}</div>
                 </div>
 
