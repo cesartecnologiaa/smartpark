@@ -230,7 +230,7 @@ export default function ClientsManager() {
   return (
     <div className="min-h-screen bg-app px-4 py-6 md:px-6 md:py-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <div className="panel-card rounded-[28px] p-5 md:p-6">
+        <div className="panel-card rounded-3xl p-5 md:p-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
@@ -276,7 +276,7 @@ export default function ClientsManager() {
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{success}</div>
         ) : null}
 
-        <div className="panel-card overflow-hidden rounded-[28px] p-0">
+        <div className="panel-card overflow-hidden rounded-3xl p-0">
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm text-slate-700">
               <thead className="bg-slate-50 text-slate-500">
@@ -288,7 +288,7 @@ export default function ClientsManager() {
                   <th className="px-4 py-4 font-semibold">Token</th>
                   <th className="px-4 py-4 font-semibold">Criado em</th>
                   <th className="px-4 py-4 font-semibold">Expira em</th>
-                  <th className="px-4 py-4 font-semibold">Ações</th>
+                  <th className="w-[88px] px-4 py-4 text-center font-semibold">Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -339,15 +339,15 @@ export default function ClientsManager() {
                         </td>
                         <td className="px-4 py-4">{formatDate(item.criadoEm)}</td>
                         <td className="px-4 py-4">{formatDate(item.expiraEm)}</td>
-                        <td className="px-4 py-4">
+                        <td className="px-4 py-4 text-center">
                           <button
-                            className="secondary-button !min-h-0 px-3 py-2 text-[11px]"
+                            aria-label="Abrir ações do token"
+                            className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                             disabled={revokingId === item.id}
                             onClick={() => setActionItem(item)}
                             type="button"
                           >
-                            <MoreVertical size={14} />
-                            Ações
+                            <MoreVertical size={16} />
                           </button>
                         </td>
                       </tr>
@@ -367,7 +367,7 @@ export default function ClientsManager() {
 
       {actionItem ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/35 px-4 py-6 sm:items-center">
-          <div className="panel-card w-full max-w-sm rounded-[28px] p-5">
+          <div className="panel-card w-full max-w-sm rounded-3xl p-5">
             <div>
               <h3 className="text-lg font-semibold text-slate-950">Ações do token</h3>
               <p className="mt-1 text-sm text-slate-500">{actionItem.nome} • {actionItem.email}</p>
@@ -407,7 +407,7 @@ export default function ClientsManager() {
 
       {modalOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 px-4">
-          <div className="panel-card w-full max-w-xl rounded-[28px] p-6">
+          <div className="panel-card w-full max-w-xl rounded-3xl p-6">
             {generatedToken ? (
               <div className="space-y-5">
                 <div>
