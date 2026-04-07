@@ -74,6 +74,8 @@ export default function AdminToolsPage() {
   const [cashCursor, setCashCursor] = useState<DocumentSnapshot | null>(null);
   const [ticketHistory, setTicketHistory] = useState<(DocumentSnapshot | null)[]>([null]);
   const [cashHistory, setCashHistory] = useState<(DocumentSnapshot | null)[]>([null]);
+  const [showTicketFilters, setShowTicketFilters] = useState(false);
+  const [showCashFilters, setShowCashFilters] = useState(false);
 
   async function loadTickets(pageCursor: DocumentSnapshot | null = null, resetHistory = false) {
     if (!profile?.tenantId) {
@@ -352,8 +354,8 @@ export default function AdminToolsPage() {
         />
 
         <div className="panel-card mb-6 p-4 sm:p-6">
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr),minmax(0,0.85fr),minmax(0,0.85fr)] xl:items-end">
-            <div>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="w-full lg:max-w-2xl">
               <label className="mb-2 block text-sm font-semibold text-slate-700">Pesquisar ticket</label>
               <div className="relative">
                 <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -366,34 +368,24 @@ export default function AdminToolsPage() {
               </div>
             </div>
 
-            <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
-              <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800">
-                <Image src="/filter-descending-sort-icon.svg" alt="Filtro" width={18} height={18} />
-                Filtro de tickets por data
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-                <input className="app-input" type="date" value={ticketStartDate} onChange={(e) => setTicketStartDate(e.target.value)} />
-                <input className="app-input" type="date" value={ticketEndDate} onChange={(e) => setTicketEndDate(e.target.value)} />
-              </div>
+            <div className="flex flex-wrap gap-3 text-sm text-slate-600">
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">Página de tickets: {ticketPage}</div>
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">{filteredTickets.length} ticket(s) nesta página</div>
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">Página de caixas: {cashPage}</div>
+              <button
+                className="secondary-button py-2"
+                onClick={() => {
+                  setTicketStartDate('');
+                  setTicketEndDate('');
+                  setCashStartDate('');
+                  setCashEndDate('');
+                  setShowTicketFilters(false);
+                  setShowCashFilters(false);
+                }}
+              >
+                Limpar filtros
+              </button>
             </div>
-
-            <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
-              <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800">
-                <Image src="/filter-descending-sort-icon.svg" alt="Filtro" width={18} height={18} />
-                Filtro de caixas por data
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-                <input className="app-input" type="date" value={cashStartDate} onChange={(e) => setCashStartDate(e.target.value)} />
-                <input className="app-input" type="date" value={cashEndDate} onChange={(e) => setCashEndDate(e.target.value)} />
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-3 text-sm text-slate-600">
-            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">Página de tickets: {ticketPage}</div>
-            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">{filteredTickets.length} ticket(s) nesta página</div>
-            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">Página de caixas: {cashPage}</div>
-            <button className="secondary-button py-2" onClick={() => { setTicketStartDate(''); setTicketEndDate(''); setCashStartDate(''); setCashEndDate(''); }}>Limpar filtros</button>
           </div>
 
           {message ? <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{message}</div> : null}
@@ -411,6 +403,13 @@ export default function AdminToolsPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  className="secondary-button px-3 py-2"
+                  onClick={() => setShowTicketFilters(true)}
+                  aria-label="Abrir filtros de tickets"
+                >
+                  <Image src="/filter-descending-sort-icon.svg" alt="Filtro" width={18} height={18} />
+                </button>
                 <button className="secondary-button py-2" onClick={goToPreviousTicketsPage} disabled={ticketPage === 1 || loadingTickets}>
                   <ChevronLeft size={16} />
                 </button>
@@ -527,6 +526,83 @@ export default function AdminToolsPage() {
             )}
           </section>
         </div>
+
+
+        {showTicketFilters ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
+            <div className="w-full max-w-md rounded-[28px] border border-slate-200 bg-white p-5 shadow-2xl">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-xl font-semibold text-slate-900">Filtros de tickets</h3>
+                  <p className="mt-1 text-sm text-slate-500">Defina o período para carregar os tickets administrativos.</p>
+                </div>
+                <button className="secondary-button py-2" onClick={() => setShowTicketFilters(false)}>Fechar</button>
+              </div>
+
+              <div className="mt-5 grid gap-4">
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">Data inicial</label>
+                  <input className="app-input" type="date" value={ticketStartDate} onChange={(e) => setTicketStartDate(e.target.value)} />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">Data final</label>
+                  <input className="app-input" type="date" value={ticketEndDate} onChange={(e) => setTicketEndDate(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <button
+                  className="secondary-button py-2"
+                  onClick={() => {
+                    setTicketStartDate('');
+                    setTicketEndDate('');
+                  }}
+                >
+                  Limpar
+                </button>
+                <button className="primary-button py-2" onClick={() => setShowTicketFilters(false)}>Aplicar</button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {showCashFilters ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
+            <div className="w-full max-w-md rounded-[28px] border border-slate-200 bg-white p-5 shadow-2xl">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-xl font-semibold text-slate-900">Filtros de caixas</h3>
+                  <p className="mt-1 text-sm text-slate-500">Defina o período para carregar os caixas administrativos.</p>
+                </div>
+                <button className="secondary-button py-2" onClick={() => setShowCashFilters(false)}>Fechar</button>
+              </div>
+
+              <div className="mt-5 grid gap-4">
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">Data inicial</label>
+                  <input className="app-input" type="date" value={cashStartDate} onChange={(e) => setCashStartDate(e.target.value)} />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">Data final</label>
+                  <input className="app-input" type="date" value={cashEndDate} onChange={(e) => setCashEndDate(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <button
+                  className="secondary-button py-2"
+                  onClick={() => {
+                    setCashStartDate('');
+                    setCashEndDate('');
+                  }}
+                >
+                  Limpar
+                </button>
+                <button className="primary-button py-2" onClick={() => setShowCashFilters(false)}>Aplicar</button>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {editingTicket ? (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4">
