@@ -24,7 +24,7 @@ type ClientTokenItem = {
 };
 
 function unauthorized() {
-  return NextResponse.json({ error: 'Acesso permitido apenas para usuários com cargo de suporte.' }, { status: 401 });
+  return NextResponse.json({ error: 'Acesso permitido apenas para usuários com cargo de suporte ou admin.' }, { status: 401 });
 }
 
 function normalizeClientTokenStatus(doc: ClientTokenItem): ClientTokenStatus {

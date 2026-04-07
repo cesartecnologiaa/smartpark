@@ -16,7 +16,7 @@ export default function SupportClientsPage() {
       router.replace('/login');
       return;
     }
-    if (profile.role !== 'suporte') {
+    if (profile.role !== 'suporte' && profile.role !== 'admin') {
       router.replace('/');
     }
   }, [loading, profile, router]);
@@ -25,7 +25,7 @@ export default function SupportClientsPage() {
     return <div className="panel-card p-6 text-sm text-slate-500">Carregando módulo de suporte...</div>;
   }
 
-  if (profile.role !== 'suporte') {
+  if (profile.role !== 'suporte' && profile.role !== 'admin') {
     return <div className="panel-card p-6 text-sm text-slate-500">Redirecionando...</div>;
   }
 

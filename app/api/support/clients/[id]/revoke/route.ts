@@ -12,7 +12,7 @@ export async function POST(
 ) {
   const supportUser = await verifySupportAccess(request);
   if (!supportUser) {
-    return NextResponse.json({ error: 'Acesso permitido apenas para usuários com cargo de suporte.' }, { status: 401 });
+    return NextResponse.json({ error: 'Acesso permitido apenas para usuários com cargo de suporte ou admin.' }, { status: 401 });
   }
 
   try {

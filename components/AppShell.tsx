@@ -25,16 +25,16 @@ export default function AppShell({ children }: { children: ReactNode }) {
     }
 
     if (profile && pathname === '/login') {
-      router.replace(profile.role === 'suporte' ? '/suporte/clientes' : '/');
+      router.replace('/');
       return;
     }
 
     if (profile && pathname === '/suporte/login') {
-      router.replace(profile.role === 'suporte' ? '/suporte/clientes' : '/');
+      router.replace('/');
       return;
     }
 
-    if (profile && isSupportRoute && profile.role !== 'suporte') {
+    if (profile && isSupportRoute && profile.role !== 'suporte' && profile.role !== 'admin') {
       router.replace('/');
     }
   }, [isPrintRoute, isPublic, isSupportRoute, loading, pathname, profile, router]);

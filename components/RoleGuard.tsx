@@ -8,7 +8,8 @@ import { UserRole } from '@/types';
 export default function RoleGuard({ roles, children }: { roles: UserRole[]; children: ReactNode }) {
   const { profile } = useAuth();
   if (!profile) return null;
-  if (!roles.includes(profile.role)) {
+  const allowedRoles = roles.includes('admin') && !roles.includes('suporte') ? [...roles, 'suporte'] : roles;
+  if (!allowedRoles.includes(profile.role)) {
     return (
       <div className="empty-state">
         <div className="icon-soft-red"><ShieldAlert size={28} /></div>
