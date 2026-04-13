@@ -7,6 +7,7 @@ import { db } from '@/lib/firebase';
 import { tenantCollection, tenantDoc } from '@/lib/tenant';
 import { CashRegister, EstablishmentSettings, ParkingTicket, VehicleType } from '@/types';
 import { money, shortDateTime } from '@/utils/format';
+import { sumTicketOfficialAmounts } from '@/utils/financial';
 
 const RawbtToolbar = ({ onPrint }: { onPrint: () => void }) => (
   <div className="rawbt-toolbar">
@@ -36,6 +37,7 @@ export default function PrintCaixaPage({ params }: { params: { id: string } }) {
     CAMINHAO: 0,
   });
   const [loaded, setLoaded] = useState(false);
+  const [ticketRevenue, setTicketRevenue] = useState(0);
   
   const startedRef = useRef(false);
   const blurredRef = useRef(false);
@@ -87,11 +89,12 @@ export default function PrintCaixaPage({ params }: { params: { id: string } }) {
       if (cashSnap.exists()) setCash({ id: cashSnap.id, ...(cashSnap.data() as Omit<CashRegister, 'id'>) });
       if (settingsSnap.exists()) setSettings(settingsSnap.data() as EstablishmentSettings);
       const counts: Record<VehicleType, number> = { CARRO: 0, MOTO: 0, CAMINHONETE: 0, CAMINHAO: 0 };
-      ticketsSnap.docs.forEach((doc) => {
-        const ticket = doc.data() as ParkingTicket;
+      const loadedTickets = ticketsSnap.docs.map((doc) => doc.data() as ParkingTicket);
+      loadedTickets.forEach((ticket) => {
         if (ticket.vehicleType && ticket.vehicleType in counts) counts[ticket.vehicleType] += 1;
       });
       setVehicleCounts(counts);
+      setTicketRevenue(sumTicketOfficialAmounts(loadedTickets));
       setLoaded(true);
     }
     load();
@@ -122,12 +125,12 @@ export default function PrintCaixaPage({ params }: { params: { id: string } }) {
   }, [autoPrint, loaded, cash]);
 
   const sangrias = useMemo(() => cash?.withdrawals?.reduce((sum, item) => sum + item.amount, 0) || 0, [cash]);
-  const saldo = cash ? cash.openingAmount + cash.revenueByTickets + cash.revenueByMonthly - sangrias : 0;
+  const saldo = cash ? cash.openingAmount + ticketRevenue + cash.revenueByMonthly - sangrias : 0;
   const totalVehicles = useMemo(() => Object.values(vehicleCounts).reduce((sum, value) => sum + value, 0), [vehicleCounts]);
   const is58 = (settings?.printerWidth || '80mm') === '58mm';
   const styles = useMemo(() => ({
     pageWidth: is58 ? '58mm' : '80mm',
-    padding: is58 ? '2.8mm 2.2mm 5.8mm' : '4mm 3.5mm 3mm',
+    padding: is58 ? '2.6mm 2mm 2.8mm' : '4mm 3.5mm 3mm',
     companyFont: is58 ? '5.5mm' : '5.6mm',
     companySub: is58 ? '3.1mm' : '2.9mm',
     metaFont: is58 ? '2.8mm' : '2.8mm',
@@ -136,9 +139,9 @@ export default function PrintCaixaPage({ params }: { params: { id: string } }) {
     footerFont: is58 ? '2.65mm' : '2.6mm',
     sectionGap: is58 ? '4mm' : '3mm',
     rowGap: is58 ? '2.2mm' : '1.45mm',
-    footerGap: is58 ? '5.2mm' : '1.6mm',
-    footerLineGap: is58 ? '1.8mm' : '0.6mm',
-    cutHeight: is58 ? '18mm' : '14mm',
+    footerGap: is58 ? '3.2mm' : '1.6mm',
+    footerLineGap: is58 ? '1.2mm' : '0.6mm',
+    cutHeight: is58 ? '10mm' : '14mm',
   }), [is58]);
 
   if (!cash) {
@@ -172,7 +175,7 @@ export default function PrintCaixaPage({ params }: { params: { id: string } }) {
           <div className="ticket-row"><span className="ticket-row-label">Fechamento:</span><span className="ticket-row-value">{shortDateTime(cash.closedAt)}</span></div>
           <div className="ticket-row"><span className="ticket-row-label">Fechado por:</span><span className="ticket-row-value">{cash.closedByName || '-'}</span></div>
           <div className="ticket-row"><span className="ticket-row-label">Valor Inicial:</span><span className="ticket-row-value">{money(cash.openingAmount)}</span></div>
-          <div className="ticket-row"><span className="ticket-row-label">Faturamento:</span><span className="ticket-row-value">{money(cash.revenueByTickets + cash.revenueByMonthly)}</span></div>
+          <div className="ticket-row"><span className="ticket-row-label">Faturamento:</span><span className="ticket-row-value">{money(ticketRevenue + (cash.revenueByMonthly || 0))}</span></div>
           <div className="ticket-row"><span className="ticket-row-label">Sangrias:</span><span className="ticket-row-value">{money(sangrias)}</span></div>
           <div className="ticket-row"><span className="ticket-row-label">Saldo Final:</span><span className="ticket-row-value">{money(saldo)}</span></div>
           <div className="ticket-dashed" />
@@ -193,7 +196,7 @@ export default function PrintCaixaPage({ params }: { params: { id: string } }) {
 
       <style jsx global>{`
         .print-ticket-page { display: flex; justify-content: center; padding: 8px; background: #f3f4f6; min-height: 100vh; width: 100%; }
-        .print-ticket { width: ${styles.pageWidth}; background: #fff; color: #111827; padding: ${styles.padding}; box-sizing: border-box; font-family: Arial, Helvetica, sans-serif; overflow: visible; box-shadow: 0 0 0 1px #e5e7eb, 0 12px 30px rgba(15, 23, 42, 0.10); }
+        .print-ticket { width: ${styles.pageWidth}; background: #fff; color: #111827; padding: ${styles.padding}; box-sizing: border-box; font-family: Arial, Helvetica, sans-serif; box-shadow: 0 0 0 1px #e5e7eb, 0 12px 30px rgba(15, 23, 42, 0.10); }
         .ticket-header { text-align: center; margin-bottom: 2.2mm; }
         .ticket-company { text-align: center; font-size: ${styles.companyFont}; font-weight: 700; line-height: 1.1; margin-bottom: 1.3mm; word-break: break-word; white-space: normal; }
         .ticket-company-sub { font-size: ${styles.companySub}; font-weight: 600; line-height: 1.2; color: #000; margin-bottom: 1mm; }
@@ -204,9 +207,9 @@ export default function PrintCaixaPage({ params }: { params: { id: string } }) {
         .ticket-row { display: flex; justify-content: space-between; align-items: flex-start; gap: ${is58 ? '2.4mm' : '1.8mm'}; margin: ${styles.rowGap} 0; font-size: ${styles.rowFont}; line-height: ${is58 ? '1.42' : '1.3'}; }
         .ticket-row-label { color: #000; font-weight: 600; }
         .ticket-row-value { color: #111827; font-weight: 700; text-align: right; }
-        .ticket-footer { text-align: center; font-size: ${styles.footerFont}; line-height: ${is58 ? '1.45' : '1.2'}; color: #000; font-weight: 600; margin-top: ${styles.footerGap}; padding-bottom: ${is58 ? '2.8mm' : '0'}; }
+        .ticket-footer { text-align: center; font-size: ${styles.footerFont}; line-height: ${is58 ? '1.35' : '1.2'}; color: #000; font-weight: 600; margin-top: ${styles.footerGap}; }
         .ticket-footer p { margin: 0 0 ${styles.footerLineGap}; }
-        .cut-space { height: ${styles.cutHeight}; min-height: ${styles.cutHeight}; }
+        .cut-space { height: ${styles.cutHeight}; }
         .rawbt-toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: center; background: #1e293b; color: white; padding: 12px 16px; position: sticky; top: 0; z-index: 50; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .rawbt-toolbar strong { display: block; font-size: 13px; color: #38bdf8; }
         .rawbt-toolbar p { margin: 2px 0 0; font-size: 10px; color: #94a3b8; line-height: 1.3; }
@@ -214,11 +217,10 @@ export default function PrintCaixaPage({ params }: { params: { id: string } }) {
         .rawbt-actions button { background: #38bdf8; color: #0f172a; border: none; padding: 8px 12px; border-radius: 6px; font-weight: 600; font-size: 12px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 4px; }
         .rawbt-actions button.bg-slate-600 { background: #475569; color: #fff; }
         .rawbt-actions button:active { transform: scale(0.95); opacity: 0.9; }
-        @page { size: ${styles.pageWidth} auto; margin: 0; }
         @media print {
           .rawbt-toolbar { display: none !important; }
-          .print-ticket-page { display: block; background: #fff; min-height: auto; padding-bottom: 0 !important; }
-          .print-ticket { box-shadow: none; margin: 0; width: 100%; overflow: visible; page-break-inside: avoid; break-inside: avoid; }
+          .print-ticket-page { display: block; background: #fff; min-height: auto; }
+          .print-ticket { box-shadow: none; margin: 0; width: 100%; }
         }
       `}</style>
     </>

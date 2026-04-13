@@ -124,7 +124,4 @@ export interface EstablishmentSettings {
   printerWidth?: PrinterWidth;
   printMethod?: PrintMethod;
   chargeMode?: ChargeMode;
-  pixKey?: string;
-  pixReceiverName?: string;
-  pixCity?: string;
 }

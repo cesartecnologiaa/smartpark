@@ -25,12 +25,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
     }
 
     if (profile && pathname === '/login') {
-      router.replace('/');
+      router.replace(profile.role === 'suporte' ? '/suporte/clientes' : '/');
       return;
     }
 
     if (profile && pathname === '/suporte/login') {
-      router.replace('/');
+      router.replace(profile.role === 'suporte' ? '/suporte/clientes' : '/');
       return;
     }
 

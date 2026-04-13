@@ -1,9 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import QRCode from 'qrcode';
 import { getDoc, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
-import { CarFront, Copy, CreditCard, MessageCircleMore, Printer, QrCode, ScanQrCode, X } from 'lucide-react';
+import { CarFront, CreditCard, MessageCircleMore, Printer, ScanQrCode } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import QrScanner from '@/components/QrScanner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,7 +13,6 @@ import { CashRegister, EstablishmentSettings, MonthlyCustomer, ParkingSpace, Par
 import { formatDurationMinutes, money, plateMask, shortDateTime } from '@/utils/format';
 import { calculateParkingAmount, diffDaysFromNow } from '@/utils/parking';
 import { buildReceiptWhatsappUrl } from '@/utils/whatsapp';
-import { buildPixPayload } from '@/utils/pix';
 
 type SearchMode = 'qr' | 'codigo' | 'placa';
 
@@ -31,9 +29,6 @@ export default function SaidaPage() {
   const [preview, setPreview] = useState<{ ticket: ParkingTicket; total: number; minutes: number; monthly: MonthlyCustomer | null; fractions: number; fractionValue: number } | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('dinheiro');
   const [message, setMessage] = useState('');
-  const [showPixModal, setShowPixModal] = useState(false);
-  const [pixQrCode, setPixQrCode] = useState('');
-  const [pixPayload, setPixPayload] = useState('');
 
   useEffect(() => {
     const unsubTickets = onSnapshot(query(tenantCollection(db, profile?.tenantId, 'parkingTickets'), where('status', '==', 'ativo')), (snapshot) => {
@@ -138,63 +133,6 @@ export default function SaidaPage() {
   const selectedSpace = preview?.ticket.parkingSpaceId ? spaces.find((item) => item.id === preview.ticket.parkingSpaceId) : null;
   const overdueDays = preview?.monthly?.endDate ? diffDaysFromNow(preview.monthly.endDate) : 0;
   const whatsappUrl = preview?.ticket ? buildReceiptWhatsappUrl({ ...preview.ticket, durationMinutes: preview.minutes, amountCharged: preview.total, paymentMethod }, settings?.name || 'Estacionamento') : '';
-  const pixKey = (settings?.pixKey || '').trim();
-
-  useEffect(() => {
-    let active = true;
-
-    async function generatePixQr() {
-      if (!showPixModal || !preview || !pixKey) {
-        if (active) {
-          setPixQrCode('');
-          setPixPayload('');
-        }
-        return;
-      }
-
-      const payload = buildPixPayload({
-        key: pixKey,
-        receiverName: settings?.pixReceiverName || settings?.name || 'SMARTPARK',
-        city: settings?.pixCity || settings?.address || 'ANGELANDIA',
-        amount: preview.total,
-        txid: preview.ticket.shortTicket || preview.ticket.id,
-      });
-
-      const dataUrl = await QRCode.toDataURL(payload, { margin: 1, width: 320 });
-      if (active) {
-        setPixPayload(payload);
-        setPixQrCode(dataUrl);
-      }
-    }
-
-    generatePixQr().catch(() => {
-      if (active) {
-        setPixQrCode('');
-        setPixPayload('');
-      }
-    });
-
-    return () => {
-      active = false;
-    };
-  }, [pixKey, preview, settings?.address, settings?.name, settings?.pixCity, settings?.pixReceiverName, showPixModal]);
-
-  async function handlePaymentMethodChange(nextMethod: PaymentMethod) {
-    setPaymentMethod(nextMethod);
-    if (nextMethod === 'pix') {
-      if (!pixKey) {
-        setMessage('Cadastre a chave PIX da empresa nas configurações para abrir o QR Code.');
-        return;
-      }
-      setShowPixModal(true);
-    }
-  }
-
-  async function copyPixPayload() {
-    if (!pixPayload) return;
-    await navigator.clipboard.writeText(pixPayload);
-    setMessage('Código PIX copiado com sucesso.');
-  }
 
   return (
     <div className="min-w-0 overflow-x-hidden">
@@ -296,22 +234,12 @@ export default function SaidaPage() {
                 </div>
               ) : null}
 
-              <select className="app-input" value={paymentMethod} onChange={(e) => void handlePaymentMethodChange(e.target.value as PaymentMethod)}>
+              <select className="app-input" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}>
                 <option value="dinheiro">Dinheiro</option>
                 <option value="pix">PIX</option>
                 <option value="cartao">Cartão</option>
                 {preview.total === 0 ? <option value="mensalista">Mensalista</option> : null}
               </select>
-              {paymentMethod === 'pix' && pixKey ? (
-                <button
-                  type="button"
-                  className="secondary-button w-full justify-center"
-                  onClick={() => setShowPixModal(true)}
-                >
-                  <QrCode size={16} />
-                  Ver QR Code PIX
-                </button>
-              ) : null}
               {!openCashRegister ? <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">Abra o caixa para concluir a saída.</p> : null}
               <button className="primary-button w-full justify-center" disabled={!openCashRegister} onClick={finalizeExit}>Finalizar Saída</button>
               <div className="mobile-stack flex flex-col gap-3 sm:flex-row">
@@ -323,50 +251,6 @@ export default function SaidaPage() {
           {message ? <p className="mt-4 text-sm text-blue-700">{message}</p> : null}
         </div>
       </div>
-
-      {showPixModal && preview ? (
-        <div className="fixed inset-0 z-[90] flex items-end justify-center bg-slate-950/45 p-4 sm:items-center">
-          <div className="w-full max-w-md rounded-[28px] border border-white/60 bg-white p-4 shadow-2xl sm:p-5">
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Pagamento PIX</p>
-                <h3 className="mt-1 text-lg font-semibold text-slate-900">QR Code para recebimento</h3>
-                <p className="mt-1 text-sm text-slate-500">Use o app do banco para escanear e receber {money(preview.total)}.</p>
-              </div>
-              <button className="secondary-button h-10 w-10 justify-center p-0" onClick={() => setShowPixModal(false)} aria-label="Fechar QR Code PIX">
-                <X size={16} />
-              </button>
-            </div>
-
-            <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
-              <div className="mx-auto flex w-full max-w-[260px] items-center justify-center rounded-[22px] bg-white p-3">
-                {pixQrCode ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={pixQrCode} alt="QR Code PIX" className="h-full w-full rounded-[18px]" />
-                ) : (
-                  <div className="flex min-h-[220px] items-center justify-center text-sm text-slate-500">Gerando QR Code...</div>
-                )}
-              </div>
-
-              <div className="mt-4 space-y-2 text-sm text-slate-600">
-                <div className="flex items-center justify-between gap-3"><span>Chave PIX</span><strong className="text-right text-slate-900 break-all">{pixKey}</strong></div>
-                <div className="flex items-center justify-between gap-3"><span>Recebedor</span><strong className="text-right text-slate-900">{settings?.pixReceiverName || settings?.name || 'SmartPark'}</strong></div>
-                <div className="flex items-center justify-between gap-3"><span>Valor</span><strong className="text-right text-slate-900">{money(preview.total)}</strong></div>
-              </div>
-            </div>
-
-            <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-              <button className="secondary-button w-full justify-center" onClick={() => void copyPixPayload()}>
-                <Copy size={16} />
-                Copiar código PIX
-              </button>
-              <button className="primary-button w-full justify-center" onClick={() => setShowPixModal(false)}>
-                Confirmar visualização
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

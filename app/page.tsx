@@ -11,6 +11,7 @@ import { db } from '@/lib/firebase';
 import { tenantCollection } from '@/lib/tenant';
 import { CashRegister, ParkingSpace, ParkingTicket } from '@/types';
 import { money, shortDateTime, todayRange } from '@/utils/format';
+import { sumTicketOfficialAmounts } from '@/utils/financial';
 
 export default function DashboardPage() {
   const { profile } = useAuth();
@@ -47,7 +48,7 @@ export default function DashboardPage() {
     };
   }, [profile?.tenantId]);
 
-  const revenueToday = useMemo(() => todayExits.reduce((sum, item) => sum + (item.amountCharged || 0), 0), [todayExits]);
+  const revenueToday = useMemo(() => sumTicketOfficialAmounts(todayExits), [todayExits]);
   const freeSpaces = spaces.filter((space) => space.status === 'livre').length;
 
   return (
@@ -67,7 +68,7 @@ export default function DashboardPage() {
         <StatCard title="Veículos no Pátio" value={`${activeTickets.length}${spaces.length ? `/${spaces.length}` : ''}`} icon={<CarFront size={20} />} hint={spaces.length ? `${freeSpaces} vagas disponíveis` : 'Nenhuma vaga cadastrada'} />
         <StatCard title="Entradas Hoje" value={String(todayEntries.length)} icon={<LogIn size={20} />} tone="green" />
         <StatCard title="Saídas Hoje" value={String(todayExits.length)} icon={<ArrowRightLeft size={20} />} tone="red" />
-        {profile?.role === 'admin' || profile?.role === 'suporte' ? <StatCard title="Faturamento Hoje" value={money(revenueToday)} icon={<CircleDollarSign size={20} />} tone="blue" hint={openCash ? `Caixa aberto por ${openCash.operatorName}` : 'Nenhum caixa aberto'} /> : <StatCard title="Status do Caixa" value={openCash ? 'Aberto' : 'Fechado'} icon={<Wallet size={20} />} tone="slate" hint={openCash ? `Aberto por ${openCash.operatorName}` : 'Abra o caixa para operar'} />}
+        {profile?.role === 'admin' ? <StatCard title="Faturamento Hoje" value={money(revenueToday)} icon={<CircleDollarSign size={20} />} tone="blue" hint={openCash ? `Caixa aberto por ${openCash.operatorName}` : 'Nenhum caixa aberto'} /> : <StatCard title="Status do Caixa" value={openCash ? 'Aberto' : 'Fechado'} icon={<Wallet size={20} />} tone="slate" hint={openCash ? `Aberto por ${openCash.operatorName}` : 'Abra o caixa para operar'} />}
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.4fr,0.9fr]">

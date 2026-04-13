@@ -2,23 +2,9 @@
 
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createUserWithEmailAndPassword, getAuth, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, getDoc, getFirestore, setDoc, Timestamp, updateDoc } from 'firebase/firestore';
-
-import { auth, db, getSecondaryApp } from '@/lib/firebase';
-
-function normalizeTokenStatus(data: any) {
-  const raw = String(data?.status || 'PENDENTE').toUpperCase();
-  if (raw === 'UTILIZADO') return 'UTILIZADO';
-  if (raw === 'EXPIRADO') return 'EXPIRADO';
-
-  const expiraEm = data?.expiraEm?.toDate ? data.expiraEm.toDate() : new Date(data?.expiraEm || 0);
-  if (!Number.isNaN(expiraEm.getTime()) && expiraEm.getTime() < Date.now()) {
-    return 'EXPIRADO';
-  }
-
-  return 'PENDENTE';
-}
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
 
 export default function PrimeiroAcessoPage() {
   const router = useRouter();
@@ -34,12 +20,6 @@ export default function PrimeiroAcessoPage() {
     setError('');
     setSuccess('');
 
-    const normalizedToken = token.trim();
-    if (!normalizedToken) {
-      setError('Informe o token de acesso.');
-      return;
-    }
-
     if (senha.length < 6) {
       setError('A senha deve ter pelo menos 6 caracteres.');
       return;
@@ -52,71 +32,53 @@ export default function PrimeiroAcessoPage() {
 
     setLoading(true);
 
-    const secondaryApp = getSecondaryApp();
-    const secondaryAuth = getAuth(secondaryApp);
-    const secondaryDb = getFirestore(secondaryApp);
-
     try {
-      const tokenRef = doc(db, 'client_tokens', normalizedToken);
-      const tokenSnap = await getDoc(tokenRef);
-
-      if (!tokenSnap.exists()) {
-        throw new Error('Token inválido.');
+      const validateResponse = await fetch('/api/primeiro-acesso', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'validate', token }),
+      });
+      const validateData = await validateResponse.json();
+      if (!validateResponse.ok) {
+        throw new Error(validateData.error || 'Não foi possível validar o token.');
       }
 
-      const tokenData = tokenSnap.data() as any;
-      const tokenStatus = normalizeTokenStatus(tokenData);
+      const tokenDoc = validateData.tokenDoc as {
+        id: string;
+        email: string;
+        nome: string;
+        tenantId: string;
+      };
 
-      if (tokenStatus === 'UTILIZADO') {
-        throw new Error('Token já utilizado.');
-      }
-
-      if (tokenStatus === 'EXPIRADO') {
-        throw new Error('Token expirado.');
-      }
-
-      const email = String(tokenData?.email || '').trim().toLowerCase();
-      const nome = String(tokenData?.nome || 'Administrador').trim();
-      const tenantId = String(tokenData?.tenantId || '').trim();
-
-      if (!email || !tenantId) {
-        throw new Error('Token inválido ou incompleto.');
-      }
-
-      const credential = await createUserWithEmailAndPassword(secondaryAuth, email, senha);
-
+      const credential = await createUserWithEmailAndPassword(auth, tokenDoc.email, senha);
       await setDoc(
-        doc(secondaryDb, 'users', credential.user.uid),
+        doc(db, 'users', credential.user.uid),
         {
-          uid: credential.user.uid,
-          name: nome,
-          email,
+          name: tokenDoc.nome,
+          email: tokenDoc.email,
           role: 'admin',
           active: true,
           createdAt: new Date().toISOString(),
-          tenantId,
+          tenantId: tokenDoc.tenantId,
         },
         { merge: true }
       );
 
-      await updateDoc(doc(secondaryDb, 'client_tokens', normalizedToken), {
-        status: 'UTILIZADO',
-        utilizadoEm: Timestamp.fromDate(new Date()),
+      const finalizeResponse = await fetch('/api/primeiro-acesso', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'finalize', docId: tokenDoc.id }),
       });
-
-      await signOut(secondaryAuth);
-      await signInWithEmailAndPassword(auth, email, senha);
+      const finalizeData = await finalizeResponse.json();
+      if (!finalizeResponse.ok) {
+        throw new Error(finalizeData.error || 'Conta criada, mas o token não pôde ser finalizado.');
+      }
 
       setSuccess('Conta criada com sucesso. Redirecionando...');
       router.replace('/');
       router.refresh();
     } catch (err: any) {
-      const message = err?.message || 'Erro ao concluir o primeiro acesso.';
-      if (message.includes('auth/email-already-in-use')) {
-        setError('Este token já foi usado para criar uma conta.');
-      } else {
-        setError(message);
-      }
+      setError(err?.message || 'Erro ao concluir o primeiro acesso.');
     } finally {
       setLoading(false);
     }
@@ -129,7 +91,7 @@ export default function PrimeiroAcessoPage() {
           <div className="border-b border-slate-100 bg-slate-50/70 px-8 py-8">
             <h1 className="text-3xl font-semibold text-slate-950">Primeiro acesso do cliente</h1>
             <p className="mt-2 text-sm leading-6 text-slate-500">
-              Informe o token enviado pelo suporte e defina a senha inicial do administrador da nova empresa.
+              Informe o token enviado pelo suporte e defina a senha inicial do administrador do estacionamento.
             </p>
           </div>
 

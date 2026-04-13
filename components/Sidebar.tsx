@@ -24,16 +24,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import { UserRole } from '@/types';
 
 const menu: { href: string; label: string; icon: any; roles: UserRole[] }[] = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'suporte', 'vendedor'] },
-  { href: '/entrada', label: 'Entrada', icon: Car, roles: ['admin', 'suporte', 'vendedor'] },
-  { href: '/saida', label: 'Saída', icon: CreditCard, roles: ['admin', 'suporte', 'vendedor'] },
-  { href: '/mensalistas', label: 'Mensalistas', icon: Users, roles: ['admin', 'suporte', 'vendedor'] },
-  { href: '/precos', label: 'Preços', icon: Tags, roles: ['admin', 'suporte'] },
-  { href: '/caixa', label: 'Caixa', icon: Wallet, roles: ['admin', 'suporte', 'vendedor'] },
-  { href: '/vagas', label: 'Vagas', icon: Warehouse, roles: ['admin', 'suporte', 'vendedor'] },
-  { href: '/relatorios', label: 'Relatórios', icon: BarChart3, roles: ['admin', 'suporte'] },
-  { href: '/usuarios', label: 'Usuários', icon: ShieldCheck, roles: ['admin', 'suporte'] },
-  { href: '/configuracoes', label: 'Configurações', icon: Settings, roles: ['admin', 'suporte', 'vendedor'] },
+  { href: '/', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'vendedor'] },
+  { href: '/entrada', label: 'Entrada', icon: Car, roles: ['admin', 'vendedor'] },
+  { href: '/saida', label: 'Saída', icon: CreditCard, roles: ['admin', 'vendedor'] },
+  { href: '/mensalistas', label: 'Mensalistas', icon: Users, roles: ['admin', 'vendedor'] },
+  { href: '/precos', label: 'Preços', icon: Tags, roles: ['admin'] },
+  { href: '/caixa', label: 'Caixa', icon: Wallet, roles: ['admin', 'vendedor'] },
+  { href: '/vagas', label: 'Vagas', icon: Warehouse, roles: ['admin', 'vendedor'] },
+  { href: '/relatorios', label: 'Relatórios', icon: BarChart3, roles: ['admin'] },
+  { href: '/usuarios', label: 'Usuários', icon: ShieldCheck, roles: ['admin'] },
+  { href: '/configuracoes', label: 'Configurações', icon: Settings, roles: ['admin', 'vendedor'] },
   { href: '/suporte/clientes', label: 'Suporte', icon: LifeBuoy, roles: ['suporte'] },
 ];
 

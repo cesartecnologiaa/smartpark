@@ -15,8 +15,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
 import { tenantCollection, tenantDoc } from '@/lib/tenant';
 import { openPrintPage } from '@/lib/print';
-import { CashRegister } from '@/types';
+import { CashRegister, ParkingTicket } from '@/types';
 import { money, shortDateTime, toInputNumber } from '@/utils/format';
+import {
+  buildCashTicketRevenueMap,
+  getCashDisplayedBalance,
+  getCashDisplayedTotalRevenue,
+} from '@/utils/financial';
 
 export default function CaixaPage() {
   const { profile } = useAuth();
@@ -27,14 +32,15 @@ export default function CaixaPage() {
   const [withdrawReason, setWithdrawReason] = useState('');
   const [openCash, setOpenCash] = useState<CashRegister | null>(null);
   const [cashRows, setCashRows] = useState<CashRegister[]>([]);
+  const [closedTickets, setClosedTickets] = useState<ParkingTicket[]>([]);
   const [message, setMessage] = useState('');
 
-  const canViewCashHistory = profile?.role === 'admin' || profile?.role === 'suporte';
+  const canViewCashHistory = profile?.role === 'admin';
 
   useEffect(() => {
     let unsubRows: (() => void) | null = null;
 
-    if (profile?.role === 'admin' || profile?.role === 'suporte') {
+    if (profile?.role === 'admin') {
       unsubRows = onSnapshot(tenantCollection(db, profile?.tenantId, 'cashRegisters'), (snap) => {
         const items = snap.docs.map((d) => ({
           id: d.id,
@@ -53,11 +59,17 @@ export default function CaixaPage() {
       };
     }
 
+    const unsubTickets = onSnapshot(
+      query(tenantCollection(db, profile?.tenantId, 'parkingTickets'), where('status', '==', 'finalizado')),
+      (snap) => {
+        setClosedTickets(
+          snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<ParkingTicket, 'id'>) }))
+        );
+      }
+    );
+
     const unsubOpen = onSnapshot(
-      query(
-        tenantCollection(db, profile?.tenantId, 'cashRegisters'),
-        where('status', '==', 'aberto')
-      ),
+      query(tenantCollection(db, profile?.tenantId, 'cashRegisters'), where('status', '==', 'aberto')),
       (snap) => {
         const row = snap.docs[0];
         setOpenCash(row ? { id: row.id, ...(row.data() as Omit<CashRegister, 'id'>) } : null);
@@ -66,31 +78,34 @@ export default function CaixaPage() {
 
     return () => {
       if (unsubRows) unsubRows();
+      unsubTickets();
       unsubOpen();
     };
   }, [profile]);
+
+  const ticketRevenueMap = useMemo(() => buildCashTicketRevenueMap(closedTickets), [closedTickets]);
 
   const withdrawalTotal = useMemo(
     () => openCash?.withdrawals?.reduce((sum, item) => sum + item.amount, 0) || 0,
     [openCash]
   );
 
-  const partialBalance = openCash
-    ? openCash.openingAmount +
-      openCash.revenueByTickets +
-      openCash.revenueByMonthly -
-      withdrawalTotal
-    : 0;
+  const openCashTotalRevenue = useMemo(
+    () => getCashDisplayedTotalRevenue(openCash, ticketRevenueMap),
+    [openCash, ticketRevenueMap]
+  );
+
+  const partialBalance = useMemo(
+    () => getCashDisplayedBalance(openCash, ticketRevenueMap),
+    [openCash, ticketRevenueMap]
+  );
 
   async function handleOpen(event: FormEvent) {
     event.preventDefault();
     if (!profile || openCash) return;
 
     const existingOpenCash = await getDocs(
-      query(
-        tenantCollection(db, profile?.tenantId, 'cashRegisters'),
-        where('status', '==', 'aberto')
-      )
+      query(tenantCollection(db, profile?.tenantId, 'cashRegisters'), where('status', '==', 'aberto'))
     );
 
     if (!existingOpenCash.empty) {
@@ -156,19 +171,13 @@ export default function CaixaPage() {
         subtitle="Controle de abertura e fechamento de caixa"
         actions={
           !openCash ? (
-            <button
-              className="primary-button"
-              onClick={() => setShowOpenForm((v) => !v)}
-            >
+            <button className="primary-button" onClick={() => setShowOpenForm((v) => !v)}>
               <Plus size={16} />
               Abrir Caixa
             </button>
           ) : (
             <div className="flex flex-wrap gap-3">
-              <button
-                className="secondary-button"
-                onClick={() => setShowWithdrawForm((v) => !v)}
-              >
+              <button className="secondary-button" onClick={() => setShowWithdrawForm((v) => !v)}>
                 <BanknoteArrowUp size={16} />
                 Sangria
               </button>
@@ -192,11 +201,7 @@ export default function CaixaPage() {
               onChange={(e) => setOpeningAmount(e.target.value)}
             />
             <button className="primary-button">Abrir Caixa</button>
-            <button
-              className="secondary-button"
-              type="button"
-              onClick={() => setShowOpenForm(false)}
-            >
+            <button className="secondary-button" type="button" onClick={() => setShowOpenForm(false)}>
               Cancelar
             </button>
           </form>
@@ -212,85 +217,42 @@ export default function CaixaPage() {
               <p className="text-sm text-slate-500">Aberto por</p>
               <p className="mt-2 font-semibold text-slate-900">{openCash.operatorName}</p>
             </div>
-
             <div className="rounded-3xl bg-slate-50 p-4">
               <p className="text-sm text-slate-500">Abertura</p>
-              <p className="mt-2 font-semibold text-slate-900">
-                {shortDateTime(openCash.openedAt)}
-              </p>
+              <p className="mt-2 font-semibold text-slate-900">{shortDateTime(openCash.openedAt)}</p>
             </div>
-
             <div className="rounded-3xl bg-slate-50 p-4">
               <p className="text-sm text-slate-500">Valor Inicial</p>
-              <p className="mt-2 font-semibold text-slate-900">
-                {money(openCash.openingAmount)}
-              </p>
+              <p className="mt-2 font-semibold text-slate-900">{money(openCash.openingAmount)}</p>
             </div>
-
             <div className="rounded-3xl bg-slate-50 p-4">
               <p className="text-sm text-slate-500">Faturamento</p>
-              <p className="mt-2 font-semibold text-slate-900">
-                {money(openCash.revenueByTickets + openCash.revenueByMonthly)}
-              </p>
+              <p className="mt-2 font-semibold text-slate-900">{money(openCashTotalRevenue)}</p>
             </div>
-
             <div className="rounded-3xl bg-slate-50 p-4">
               <p className="text-sm text-slate-500">Saldo Parcial</p>
-              <p className="mt-2 font-semibold text-slate-900">
-                {money(partialBalance)}
-              </p>
+              <p className="mt-2 font-semibold text-slate-900">{money(partialBalance)}</p>
             </div>
           </div>
 
           {showWithdrawForm ? (
-            <form
-              className="mt-5 grid gap-3 md:grid-cols-[1fr,1fr,auto,auto]"
-              onSubmit={handleWithdraw}
-            >
-              <input
-                className="app-input"
-                placeholder="Valor da Sangria (R$)"
-                value={withdrawAmount}
-                onChange={(e) => setWithdrawAmount(e.target.value)}
-                required
-              />
-              <input
-                className="app-input"
-                placeholder="Motivo"
-                value={withdrawReason}
-                onChange={(e) => setWithdrawReason(e.target.value)}
-                required
-              />
-              <button className="primary-button" type="submit">
-                Confirmar Sangria
-              </button>
-              <button
-                className="secondary-button"
-                type="button"
-                onClick={() => setShowWithdrawForm(false)}
-              >
-                Cancelar
-              </button>
+            <form className="mt-5 grid gap-3 md:grid-cols-[1fr,1fr,auto,auto]" onSubmit={handleWithdraw}>
+              <input className="app-input" placeholder="Valor da Sangria (R$)" value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} required />
+              <input className="app-input" placeholder="Motivo" value={withdrawReason} onChange={(e) => setWithdrawReason(e.target.value)} required />
+              <button className="primary-button" type="submit">Confirmar Sangria</button>
+              <button className="secondary-button" type="button" onClick={() => setShowWithdrawForm(false)}>Cancelar</button>
             </form>
           ) : null}
 
           {!!openCash.withdrawals?.length && (
             <div className="mt-5 rounded-[24px] border border-slate-200 bg-slate-50 p-4">
-              <h3 className="text-sm font-semibold text-slate-900">
-                Histórico de sangrias do caixa atual
-              </h3>
-
+              <h3 className="text-sm font-semibold text-slate-900">Histórico de sangrias do caixa atual</h3>
               <div className="mt-3 space-y-2 text-sm text-slate-600">
                 {openCash.withdrawals.map((item, index) => (
-                  <div
-                    key={`${item.createdAt}-${index}`}
-                    className="flex items-center justify-between rounded-2xl bg-white px-3 py-2"
-                  >
+                  <div key={`${item.createdAt}-${index}`} className="flex items-center justify-between rounded-2xl bg-white px-3 py-2">
                     <div>
                       <p className="font-medium text-slate-900">{item.reason}</p>
-                      <p className="text-xs text-slate-500">
-                        {shortDateTime(item.createdAt)}
-                      </p>
+                      <p className="text-xs text-slate-500">{shortDateTime(item.createdAt)}</p>
                     </div>
                     <strong className="text-rose-700">{money(item.amount)}</strong>
                   </div>
@@ -310,68 +272,32 @@ export default function CaixaPage() {
           <div className="mt-4 space-y-3 md:hidden">
             {cashRows.length ? (
               cashRows.map((row) => {
-                const sangrias =
-                  row.withdrawals?.reduce((sum, item) => sum + item.amount, 0) || 0;
-
-                const finalValue =
-                  row.openingAmount +
-                  row.revenueByTickets +
-                  row.revenueByMonthly -
-                  sangrias;
-
+                const sangrias = row.withdrawals?.reduce((sum, item) => sum + item.amount, 0) || 0;
+                const finalValue = getCashDisplayedBalance(row, ticketRevenueMap);
                 return (
                   <div key={row.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-semibold text-slate-900">{row.operatorName}</p>
-                        <p className="mt-1 text-xs text-slate-500">
-                          Aberto em {shortDateTime(row.openedAt)}
-                        </p>
+                        <p className="mt-1 text-xs text-slate-500">Aberto em {shortDateTime(row.openedAt)}</p>
                       </div>
-                      <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                          row.status === 'aberto'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-slate-100 text-slate-700'
-                        }`}
-                      >
+                      <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${row.status === 'aberto' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>
                         {row.status === 'aberto' ? 'Aberto' : 'Fechado'}
                       </span>
                     </div>
-
                     <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                      <div className="rounded-xl bg-slate-50 p-3">
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Fechamento</p>
-                        <p className="mt-1 font-semibold text-slate-800">{shortDateTime(row.closedAt)}</p>
-                      </div>
-                      <div className="rounded-xl bg-slate-50 p-3">
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Fechado por</p>
-                        <p className="mt-1 font-semibold text-slate-800 break-words">{row.closedByName || '-'}</p>
-                      </div>
-                      <div className="rounded-xl bg-slate-50 p-3">
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Valor inicial</p>
-                        <p className="mt-1 font-semibold text-slate-800">{money(row.openingAmount)}</p>
-                      </div>
-                      <div className="rounded-xl bg-slate-50 p-3">
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Faturamento</p>
-                        <p className="mt-1 font-semibold text-slate-800">{money(row.revenueByTickets + row.revenueByMonthly)}</p>
-                      </div>
-                      <div className="rounded-xl bg-slate-50 p-3">
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Sangrias</p>
-                        <p className="mt-1 font-semibold text-slate-800">{money(sangrias)}</p>
-                      </div>
-                      <div className="rounded-xl bg-slate-50 p-3">
-                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Valor final</p>
-                        <p className="mt-1 font-semibold text-slate-800">{money(finalValue)}</p>
-                      </div>
+                      <div className="rounded-xl bg-slate-50 p-3"><p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Fechamento</p><p className="mt-1 font-semibold text-slate-800">{shortDateTime(row.closedAt)}</p></div>
+                      <div className="rounded-xl bg-slate-50 p-3"><p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Fechado por</p><p className="mt-1 font-semibold text-slate-800 break-words">{row.closedByName || '-'}</p></div>
+                      <div className="rounded-xl bg-slate-50 p-3"><p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Valor inicial</p><p className="mt-1 font-semibold text-slate-800">{money(row.openingAmount)}</p></div>
+                      <div className="rounded-xl bg-slate-50 p-3"><p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Faturamento</p><p className="mt-1 font-semibold text-slate-800">{money(getCashDisplayedTotalRevenue(row, ticketRevenueMap))}</p></div>
+                      <div className="rounded-xl bg-slate-50 p-3"><p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Sangrias</p><p className="mt-1 font-semibold text-slate-800">{money(sangrias)}</p></div>
+                      <div className="rounded-xl bg-slate-50 p-3"><p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Valor final</p><p className="mt-1 font-semibold text-slate-800">{money(finalValue)}</p></div>
                     </div>
                   </div>
                 );
               })
             ) : (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-                Nenhum registro
-              </div>
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">Nenhum registro</div>
             )}
           </div>
 
@@ -393,15 +319,8 @@ export default function CaixaPage() {
               <tbody>
                 {cashRows.length ? (
                   cashRows.map((row) => {
-                    const sangrias =
-                      row.withdrawals?.reduce((sum, item) => sum + item.amount, 0) || 0;
-
-                    const finalValue =
-                      row.openingAmount +
-                      row.revenueByTickets +
-                      row.revenueByMonthly -
-                      sangrias;
-
+                    const sangrias = row.withdrawals?.reduce((sum, item) => sum + item.amount, 0) || 0;
+                    const finalValue = getCashDisplayedBalance(row, ticketRevenueMap);
                     return (
                       <tr key={row.id}>
                         <td>{row.operatorName}</td>
@@ -409,27 +328,15 @@ export default function CaixaPage() {
                         <td>{shortDateTime(row.closedAt)}</td>
                         <td>{row.closedByName || '-'}</td>
                         <td>{money(row.openingAmount)}</td>
-                        <td>{money(row.revenueByTickets + row.revenueByMonthly)}</td>
+                        <td>{money(getCashDisplayedTotalRevenue(row, ticketRevenueMap))}</td>
                         <td>{money(sangrias)}</td>
                         <td>{money(finalValue)}</td>
-                        <td>
-                          <span
-                            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                              row.status === 'aberto'
-                                ? 'bg-emerald-100 text-emerald-700'
-                                : 'bg-slate-100 text-slate-700'
-                            }`}
-                          >
-                            {row.status === 'aberto' ? 'Aberto' : 'Fechado'}
-                          </span>
-                        </td>
+                        <td><span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${row.status === 'aberto' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>{row.status === 'aberto' ? 'Aberto' : 'Fechado'}</span></td>
                       </tr>
                     );
                   })
                 ) : (
-                  <tr>
-                    <td colSpan={9}>Nenhum registro</td>
-                  </tr>
+                  <tr><td colSpan={9}>Nenhum registro</td></tr>
                 )}
               </tbody>
             </table>
