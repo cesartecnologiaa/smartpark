@@ -119,7 +119,7 @@ export default function PrintSaidaPage({ params }: { params: { id: string } }) {
   const is58 = (settings?.printerWidth || '80mm') === '58mm';
   const styles = useMemo(() => ({
     pageWidth: is58 ? '58mm' : '80mm',
-    padding: is58 ? '2.8mm 2.2mm 9.8mm' : '4mm 3.5mm 3mm',
+    padding: is58 ? '2.8mm 2.2mm 5.8mm' : '4mm 3.5mm 3mm',
     companyFont: is58 ? '5.5mm' : '5.6mm',
     companySub: is58 ? '3.1mm' : '2.9mm',
     metaFont: is58 ? '2.8mm' : '2.8mm',
@@ -171,7 +171,7 @@ export default function PrintSaidaPage({ params }: { params: { id: string } }) {
           <div className="ticket-dashed" />
           <div className="ticket-footer">
             {settings?.ticketFooter ? <p>{settings.ticketFooter}</p> : null}
-            <p className="ticket-thanks">Obrigado pela preferência!</p>
+            <p>Obrigado pela preferência!</p>
           </div>
           <div className="cut-space" />
         </div>

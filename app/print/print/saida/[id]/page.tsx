@@ -125,7 +125,7 @@ export default function PrintSaidaPage({ params }: { params: { id: string } }) {
 
         <div className="ticket-footer">
           {settings?.ticketFooter ? <p>{settings.ticketFooter}</p> : null}
-          <p className="ticket-thanks">Obrigado pela preferência!</p>
+          <p>Obrigado pela preferência!</p>
         </div>
 
         <div className="cut-space" />

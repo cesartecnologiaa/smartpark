@@ -128,7 +128,7 @@ export default function TicketDetailPage() {
           <h2 className="text-lg font-semibold text-slate-900">Operação</h2>
           <div className="mt-4 space-y-3 text-sm text-slate-600">
             <div className="rounded-[22px] bg-slate-50 p-4"><p className="text-slate-500">Operador da entrada</p><p className="mt-1 text-base font-semibold text-slate-900">{ticket.entryOperatorName || ticket.cashierName || '-'}</p></div>
-            <div className="rounded-[22px] bg-slate-50 p-4"><p className="text-slate-500">Operador da saída</p><p className="mt-1 text-base font-semibold text-slate-900">{ticket.exitOperatorName || ticket.entryOperatorName || ticket.cashierName || '-'}</p></div>
+            <div className="rounded-[22px] bg-slate-50 p-4"><p className="text-slate-500">Operador da saída</p><p className="mt-1 text-base font-semibold text-slate-900">{ticket.exitOperatorName || '-'}</p></div>
             <div className="rounded-[22px] bg-slate-50 p-4"><p className="text-slate-500">Vaga</p><p className="mt-1 text-base font-semibold text-slate-900">{ticket.parkingSpaceCode || '-'}</p></div>
           </div>
         </section>

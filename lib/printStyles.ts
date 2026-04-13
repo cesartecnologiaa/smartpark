@@ -7,8 +7,8 @@ export function buildStyles(is58: boolean) {
   return {
     pageWidthPx: is58 ? '220px' : '302px',
     pageWidthMm: is58 ? '58mm' : '80mm',
-    paddingPx: is58 ? '4px 3px 8px' : '11px 10px 8px',
-    paddingMm: is58 ? '1.4mm 1.15mm 3.8mm' : '4mm 3.5mm 3mm',
+    paddingPx: is58 ? '4px 3px 4px' : '11px 10px 8px',
+    paddingMm: is58 ? '1.4mm 1.15mm 1.5mm' : '4mm 3.5mm 3mm',
     companyFontPx: is58 ? '10px' : '16px',
     companyFontMm: is58 ? '3.45mm' : '5.6mm',
     companySubPx: is58 ? '7px' : '10px',
@@ -27,8 +27,8 @@ export function buildStyles(is58: boolean) {
     footerFontMm: is58 ? '1.68mm' : '2.6mm',
     qrSizePx: is58 ? '76px' : '117px',
     qrSizeMm: is58 ? '20mm' : '31mm',
-    cutHeightPx: is58 ? '40px' : '52px',
-    cutHeightMm: is58 ? '12mm' : '14mm',
+    cutHeightPx: is58 ? '22px' : '52px',
+    cutHeightMm: is58 ? '6mm' : '14mm',
   };
 }
 
@@ -66,8 +66,8 @@ export function basePrintStyles(styles: PrintStyles, is58: boolean): string {
   .ticket-row{display:flex;justify-content:space-between;align-items:flex-start;gap:5px;margin:3px 0;font-size:${styles.rowFontPx};line-height:1.35;}
   .ticket-row-label{color:#000;font-weight:500;}
   .ticket-row-value{color:#111827;font-weight:600;text-align:right;}
-  .ticket-footer{text-align:center;font-size:${styles.footerFontPx};line-height:1.25;color:#000;font-weight:500;margin-top:6px;padding-bottom:4px;}
-  .ticket-footer p{margin:0 0 3px;}
+  .ticket-footer{text-align:center;font-size:${styles.footerFontPx};line-height:1.2;color:#000;font-weight:500;margin-top:3px;}
+  .ticket-footer p{margin:0 0 2px;}
   .cut-space{height:${styles.cutHeightPx};}
 
   /* ─── @page: explicit paper width so Android print dialog respects it ─── */
@@ -96,8 +96,8 @@ export function basePrintStyles(styles: PrintStyles, is58: boolean): string {
     .ticket-qr{width:${styles.qrSizeMm}!important;height:${styles.qrSizeMm}!important;}
     .ticket-subtitle{font-size:${styles.subtitleMm}!important;margin:1.5mm 0 2.5mm!important;}
     .ticket-row{font-size:${styles.rowFontMm}!important;margin:1.2mm 0!important;gap:2mm!important;}
-    .ticket-footer{font-size:${styles.footerFontMm}!important;margin-top:2.4mm!important;padding-bottom:2.8mm!important;}
-    .ticket-footer p{margin:0 0 1mm!important;}
+    .ticket-footer{font-size:${styles.footerFontMm}!important;margin-top:1.2mm!important;}
+    .ticket-footer p{margin:0 0 .6mm!important;}
     .cut-space{height:${styles.cutHeightMm}!important;}
   }
 `;

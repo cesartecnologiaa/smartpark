@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { addDoc, getDoc, getDocs, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
+import { addDoc, getDoc, onSnapshot, query, updateDoc, where } from 'firebase/firestore';
 import { Bike, Car, Clock3, MessageCircleMore, Printer, Truck, TruckIcon } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import { useAuth } from '@/contexts/AuthContext';
@@ -83,29 +83,8 @@ export default function EntradaPage() {
 
     setLoading(true);
     try {
-      const normalizedPlate = plateMask(plate);
-      const selectedSpace = spaces.find((item) => item.id === selectedSpaceId);
-
-      if (!normalizedPlate) {
-        setMessage('Informe a placa do veículo.');
-        setLoading(false);
-        return;
-      }
-
-      const existingOpenTicketsSnapshot = await getDocs(
-        query(tenantCollection(db, profile?.tenantId, 'parkingTickets'), where('plate', '==', normalizedPlate))
-      );
-      const hasOpenTicketForPlate = existingOpenTicketsSnapshot.docs.some(
-        (item) => (item.data() as ParkingTicket).status === 'ativo'
-      );
-
-      if (hasOpenTicketForPlate) {
-        setMessage(`Já existe um ticket em aberto para a placa ${normalizedPlate}. Faça a saída antes de registrar uma nova entrada.`);
-        setLoading(false);
-        return;
-      }
-
       const shortTicket = await generateUniqueShortTicket(profile?.tenantId);
+      const selectedSpace = spaces.find((item) => item.id === selectedSpaceId);
 
       if (selectedSpace && selectedSpace.status !== 'livre') {
         setMessage('A vaga selecionada não está mais disponível.');
@@ -115,7 +94,7 @@ export default function EntradaPage() {
 
       const payload = {
         shortTicket,
-        plate: normalizedPlate,
+        plate: plateMask(plate),
         model,
         phone,
         vehicleType,

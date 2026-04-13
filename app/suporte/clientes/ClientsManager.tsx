@@ -12,7 +12,7 @@ import {
   setDoc,
   updateDoc,
 } from 'firebase/firestore';
-import { Copy, Eye, EyeOff, LifeBuoy, Loader2, MoreHorizontal, Plus, ShieldX, Trash2 } from 'lucide-react';
+import { Copy, Eye, EyeOff, LifeBuoy, Loader2, MoreVertical, Plus, ShieldX, Trash2 } from 'lucide-react';
 
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
@@ -230,7 +230,7 @@ export default function ClientsManager() {
   return (
     <div className="min-h-screen bg-app px-4 py-6 md:px-6 md:py-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <div className="panel-card rounded-[16px] p-5 md:p-6">
+        <div className="panel-card rounded-[20px] p-5 md:p-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
@@ -276,7 +276,7 @@ export default function ClientsManager() {
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{success}</div>
         ) : null}
 
-        <div className="panel-card overflow-hidden rounded-[16px] p-0">
+        <div className="panel-card overflow-hidden rounded-[20px] p-0">
           <div className="overflow-x-auto">
             <table className="min-w-full text-left text-sm text-slate-700">
               <thead className="bg-slate-50 text-slate-500">
@@ -288,7 +288,7 @@ export default function ClientsManager() {
                   <th className="px-4 py-4 font-semibold">Token</th>
                   <th className="px-4 py-4 font-semibold">Criado em</th>
                   <th className="px-4 py-4 font-semibold">Expira em</th>
-                  <th className="w-[72px] px-4 py-4 text-center font-semibold">Ações</th>
+                  <th className="px-4 py-4 text-center font-semibold">Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -305,7 +305,7 @@ export default function ClientsManager() {
                     const showFullToken = visibleTokenId === item.id;
                     const canShowToken = item.status === 'PENDENTE';
                     return (
-                      <tr key={item.id} className="border-t border-slate-100 align-middle">
+                      <tr key={item.id} className="border-t border-slate-100 align-top">
                         <td className="px-4 py-4 font-medium text-slate-900">{item.nome}</td>
                         <td className="px-4 py-4">{item.email}</td>
                         <td className="px-4 py-4 font-mono text-xs">{item.tenantId}</td>
@@ -339,15 +339,15 @@ export default function ClientsManager() {
                         </td>
                         <td className="px-4 py-4">{formatDate(item.criadoEm)}</td>
                         <td className="px-4 py-4">{formatDate(item.expiraEm)}</td>
-                        <td className="px-4 py-4 align-middle text-center">
+                        <td className="px-4 py-4 text-center">
                           <button
-                            aria-label="Abrir ações do token"
-                            className="mx-auto inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:opacity-60"
                             disabled={revokingId === item.id}
                             onClick={() => setActionItem(item)}
                             type="button"
+                            aria-label="Abrir ações"
                           >
-                            <MoreHorizontal size={17} strokeWidth={2.4} />
+                            <MoreVertical size={16} />
                           </button>
                         </td>
                       </tr>
@@ -367,14 +367,14 @@ export default function ClientsManager() {
 
       {actionItem ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/35 px-4 py-6 sm:items-center">
-          <div className="w-full max-w-[250px] rounded-[14px] border border-slate-200 bg-white p-3.5 shadow-[0_18px_48px_rgba(15,23,42,0.16)]">
+          <div className="w-full max-w-[340px] rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl">
             <div>
               <h3 className="text-lg font-semibold text-slate-950">Ações do token</h3>
               <p className="mt-1 text-sm text-slate-500">{actionItem.nome} • {actionItem.email}</p>
             </div>
-            <div className="mt-3.5 space-y-2">
+            <div className="mt-4 space-y-2.5">
               <button
-                className="secondary-button w-full justify-center"
+                className="secondary-button !min-h-[42px] w-full justify-center rounded-xl"
                 disabled={actionItem.status !== 'PENDENTE' || revokingId === actionItem.id}
                 onClick={async () => {
                   await handleRevoke(actionItem.id);
@@ -386,7 +386,7 @@ export default function ClientsManager() {
                 Revogar token
               </button>
               <button
-                className="secondary-button w-full justify-center border-rose-200 text-rose-700 hover:bg-rose-50"
+                className="secondary-button !min-h-[42px] w-full justify-center rounded-xl border-rose-200 text-rose-700 hover:bg-rose-50"
                 disabled={revokingId === actionItem.id}
                 onClick={async () => {
                   await handleDelete(actionItem.id);
@@ -397,7 +397,7 @@ export default function ClientsManager() {
                 <Trash2 size={16} />
                 Excluir token
               </button>
-              <button className="primary-button w-full justify-center" onClick={() => setActionItem(null)} type="button">
+              <button className="primary-button !min-h-[42px] w-full justify-center rounded-xl" onClick={() => setActionItem(null)} type="button">
                 Fechar
               </button>
             </div>
@@ -406,16 +406,16 @@ export default function ClientsManager() {
       ) : null}
 
       {modalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 px-4 py-6">
-          <div className="w-full max-w-[360px] rounded-[14px] border border-slate-200 bg-white p-4 shadow-[0_18px_48px_rgba(15,23,42,0.16)]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl">
             {generatedToken ? (
-              <div className="space-y-4">
+              <div className="space-y-5">
                 <div>
                   <h2 className="text-xl font-semibold text-slate-950">Token gerado com sucesso</h2>
                   <p className="mt-2 text-sm text-slate-500">Copie este token e envie para o cliente concluir o primeiro acesso.</p>
                 </div>
 
-                <div className="rounded-lg border border-blue-100 bg-blue-50 p-3">
+                <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
                   <div className="break-all font-mono text-sm font-semibold text-blue-800">{generatedToken}</div>
                 </div>
 
@@ -437,7 +437,7 @@ export default function ClientsManager() {
                 </div>
               </div>
             ) : (
-              <form className="space-y-3" onSubmit={handleCreateClient}>
+              <form className="space-y-3.5" onSubmit={handleCreateClient}>
                 <div>
                   <h2 className="text-xl font-semibold text-slate-950">Novo cliente</h2>
                   <p className="mt-2 text-sm text-slate-500">Crie um token de primeiro acesso para um novo cliente.</p>
@@ -445,7 +445,7 @@ export default function ClientsManager() {
 
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">Nome</label>
-                  <input className="app-input h-10" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome do cliente" required />
+                  <input className="app-input h-11" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome do cliente" required />
                 </div>
 
                 <div>
